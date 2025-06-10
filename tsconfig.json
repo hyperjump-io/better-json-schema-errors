@@ -2,7 +2,7 @@
   "exclude": ["./docs"],
   "compilerOptions": {
     "module": "Node16",
-    "target": "es2023",
+    "target": "esnext",
     "moduleResolution": "Node16",
     "esModuleInterop": true,
     "strict": true,
