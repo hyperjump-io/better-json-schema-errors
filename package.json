@@ -37,6 +37,6 @@
     "vitest": "*"
   },
   "dependencies": {
-    "@hyperjump/json-schema": "^1.14.1"
+    "@hyperjump/json-schema": "^1.15.1"
   }
 }
