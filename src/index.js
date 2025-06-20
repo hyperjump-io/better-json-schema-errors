@@ -5,8 +5,8 @@ import { normalizeOutputFormat } from "./normalizeOutputFormat/normalizeOutput.j
  */
 
 /** @type betterJsonSchemaErrors */
-export function betterJsonSchemaErrors(instance, schema, errorOutput) {
-  const normalizedErrors = normalizeOutputFormat(errorOutput);
+export async function betterJsonSchemaErrors(instance, schema, errorOutput) {
+  const normalizedErrors = await normalizeOutputFormat(errorOutput, schema);
 
   const errors = [];
   for (const error of normalizedErrors) {

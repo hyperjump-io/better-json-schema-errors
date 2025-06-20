@@ -1,35 +1,61 @@
+import * as Browser from "@hyperjump/browser";
+import { registerSchema, unregisterSchema } from "@hyperjump/json-schema/draft-2020-12";
+import { getSchema } from "@hyperjump/json-schema/experimental";
+import { pointerSegments } from "@hyperjump/json-pointer";
+import { randomUUID } from "crypto";
+
 /**
- * @import {OutputFormat, OutputUnit, NormalizedError } from "../index.d.ts"
+ * @import { OutputFormat, OutputUnit, NormalizedError, SchemaObject} from "../index.d.ts";
+ * @import { SchemaDocument } from "@hyperjump/json-schema/experimental";
+ * @import { Browser as BrowserType } from "@hyperjump/browser";
  */
 
-/** @type {(errorOutput: OutputFormat) => NormalizedError[]} */
-export function normalizeOutputFormat(errorOutput) {
-  /** @type NormalizedError[] */
+/**
+ * @param {OutputFormat} errorOutput
+ * @param {SchemaObject} schema
+ * @returns {Promise<NormalizedError[]>}
+ */
+export async function normalizeOutputFormat(errorOutput, schema) {
+  /** @type {NormalizedError[]} */
   const output = [];
+
   if (!errorOutput || errorOutput.valid !== false) {
     throw new Error("error Output must follow Draft 2019-09");
   }
 
-  /** @type {(errorOutput: OutputUnit) => void} */
-  function collectErrors(error) {
+  const keywords = new Set([
+    "type", "minLength", "maxLength", "minimum", "maximum", "format", "pattern",
+    "enum", "const", "required", "items", "properties", "allOf", "anyOf", "oneOf",
+    "not", "contains", "uniqueItems", "additionalProperties", "minItems", "maxItems",
+    "minProperties", "maxProperties", "dependentRequired", "dependencies"
+  ]);
+
+  /** @type {(errorOutput: OutputUnit) => Promise<void>} */
+  async function collectErrors(error) {
     if (error.valid) return;
 
     if (!("instanceLocation" in error) || !("absoluteKeywordLocation" in error || "keywordLocation" in error)) {
       throw new Error("error Output must follow Draft 2019-09");
     }
 
-    // TODO: Convert keywordLocation to absoluteKeywordLocation
-    error.absoluteKeywordLocation ??= "https://example.com/main#/minLength";
+    const absoluteKeywordLocation = error.absoluteKeywordLocation
+      ?? await toAbsoluteKeywordLocation(schema, /** @type string */ (error.keywordLocation));
 
-    output.push({
-      valid: false,
-      absoluteKeywordLocation: error.absoluteKeywordLocation,
-      instanceLocation: normalizeInstanceLocation(error.instanceLocation)
-    });
+    const fragment = absoluteKeywordLocation.split("#")[1];
+    const lastSegment = fragment.split("/").filter(Boolean).pop();
+
+    // make a check here to remove the schemaLocation.
+    if (lastSegment && keywords.has(lastSegment)) {
+      output.push({
+        valid: false,
+        absoluteKeywordLocation,
+        instanceLocation: normalizeInstanceLocation(error.instanceLocation)
+      });
+    }
 
     if (error.errors) {
       for (const nestedError of error.errors) {
-        collectErrors(nestedError);
+        await collectErrors(nestedError); // Recursive
       }
     }
   }
@@ -39,14 +65,35 @@ export function normalizeOutputFormat(errorOutput) {
   }
 
   for (const err of errorOutput.errors) {
-    collectErrors(err);
+    await collectErrors(err);
   }
 
   return output;
 }
 
-/** @type (location: string) => string */
+/** @type {(location: string) => string} */
 function normalizeInstanceLocation(location) {
-  if (location.startsWith("/") || location === "") return "#" + location;
-  return location;
+  return location.startsWith("/") || location === "" ? `#${location}` : location;
+}
+
+/**
+ * Convert keywordLocation to absoluteKeywordLocation
+ * @param {SchemaObject} schema
+ * @param {string} keywordLocation
+ * @returns {Promise<string>}
+ */
+export async function toAbsoluteKeywordLocation(schema, keywordLocation) {
+  const uri = `urn:uuid:${randomUUID()}`;
+  try {
+    registerSchema(schema, uri);
+
+    let browser = await getSchema(uri);
+    for (const segment of pointerSegments(keywordLocation)) {
+      browser = /** @type BrowserType<SchemaDocument> */ (await Browser.step(segment, browser));
+    }
+
+    return `${browser.document.baseUri}#${browser.cursor}`;
+  } finally {
+    unregisterSchema(uri);
+  }
 }
