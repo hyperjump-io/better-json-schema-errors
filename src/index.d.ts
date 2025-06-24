@@ -1,11 +1,15 @@
 export const betterJsonSchemaErrors: (
   instance: Json,
-  schema: SchemaObject,
-  errorOutput: OutputFormat
+  errorOutput: OutputFormat,
+  options?: BetterJsonSchemaErrorsOptions
 ) => Promise<BetterJsonSchemaErrors>;
 
 export type BetterJsonSchemaErrors = {
   errors: ErrorObject[];
+};
+
+export type BetterJsonSchemaErrorsOptions = {
+  schemaUri?: string;
 };
 
 export type ErrorObject = {
@@ -31,6 +35,7 @@ export type OutputFormat = {
 
 export type OutputUnit = {
   valid?: boolean;
+  keyword?: string;
   absoluteKeywordLocation?: string;
   keywordLocation?: string;
   instanceLocation: string;
@@ -40,6 +45,7 @@ export type OutputUnit = {
 
 export type NormalizedError = {
   valid: false;
+  keyword: string;
   absoluteKeywordLocation: string;
   instanceLocation: string;
 };

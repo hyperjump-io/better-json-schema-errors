@@ -1,8 +1,6 @@
 import * as Browser from "@hyperjump/browser";
-import { registerSchema, unregisterSchema } from "@hyperjump/json-schema/draft-2020-12";
-import { getSchema } from "@hyperjump/json-schema/experimental";
+import { getSchema, getKeywordId } from "@hyperjump/json-schema/experimental";
 import { pointerSegments } from "@hyperjump/json-pointer";
-import { randomUUID } from "crypto";
 
 /**
  * @import { OutputFormat, OutputUnit, NormalizedError, SchemaObject} from "../index.d.ts";
@@ -12,10 +10,10 @@ import { randomUUID } from "crypto";
 
 /**
  * @param {OutputFormat} errorOutput
- * @param {SchemaObject} schema
+ * @param {string} [schemaUri]
  * @returns {Promise<NormalizedError[]>}
  */
-export async function normalizeOutputFormat(errorOutput, schema) {
+export async function normalizeOutputFormat(errorOutput, schemaUri) {
   /** @type {NormalizedError[]} */
   const output = [];
 
@@ -39,7 +37,7 @@ export async function normalizeOutputFormat(errorOutput, schema) {
     }
 
     const absoluteKeywordLocation = error.absoluteKeywordLocation
-      ?? await toAbsoluteKeywordLocation(schema, /** @type string */ (error.keywordLocation));
+      ?? await toAbsoluteKeywordLocation(/** @type string */ (schemaUri), /** @type string */ (error.keywordLocation));
 
     const fragment = absoluteKeywordLocation.split("#")[1];
     const lastSegment = fragment.split("/").filter(Boolean).pop();
@@ -48,6 +46,7 @@ export async function normalizeOutputFormat(errorOutput, schema) {
     if (lastSegment && keywords.has(lastSegment)) {
       output.push({
         valid: false,
+        keyword: error.keyword ?? getKeywordId(lastSegment, "https://json-schema.org/draft/2020-12/schema"),
         absoluteKeywordLocation,
         instanceLocation: normalizeInstanceLocation(error.instanceLocation)
       });
@@ -78,22 +77,15 @@ function normalizeInstanceLocation(location) {
 
 /**
  * Convert keywordLocation to absoluteKeywordLocation
- * @param {SchemaObject} schema
+ * @param {string} uri
  * @param {string} keywordLocation
  * @returns {Promise<string>}
  */
-export async function toAbsoluteKeywordLocation(schema, keywordLocation) {
-  const uri = `urn:uuid:${randomUUID()}`;
-  try {
-    registerSchema(schema, uri);
-
-    let browser = await getSchema(uri);
-    for (const segment of pointerSegments(keywordLocation)) {
-      browser = /** @type BrowserType<SchemaDocument> */ (await Browser.step(segment, browser));
-    }
-
-    return `${browser.document.baseUri}#${browser.cursor}`;
-  } finally {
-    unregisterSchema(uri);
+export async function toAbsoluteKeywordLocation(uri, keywordLocation) {
+  let browser = await getSchema(uri);
+  for (const segment of pointerSegments(keywordLocation)) {
+    browser = /** @type BrowserType<SchemaDocument> */ (await Browser.step(segment, browser));
   }
+
+  return `${browser.document.baseUri}#${browser.cursor}`;
 }
