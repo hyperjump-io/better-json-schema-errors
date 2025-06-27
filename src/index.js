@@ -1,6 +1,8 @@
 import { normalizeOutputFormat } from "./normalizeOutputFormat/normalizeOutput.js";
 import * as Schema from "@hyperjump/browser";
-import { getSchema } from "@hyperjump/json-schema/experimental";
+import { getSchema, getKeyword } from "@hyperjump/json-schema/experimental";
+import * as Instance from "@hyperjump/json-pointer";
+import leven from "leven";
 
 /**
  * @import { Browser } from "@hyperjump/browser";
@@ -10,11 +12,13 @@ import { getSchema } from "@hyperjump/json-schema/experimental";
  */
 
 /** @type betterJsonSchemaErrors */
-export async function betterJsonSchemaErrors(instance, errorOutput, options = {}) {
-  const normalizedErrors = await normalizeOutputFormat(errorOutput, options.schemaUri);
+export async function betterJsonSchemaErrors(instance, errorOutput, schemaUri) {
+  const schema = await getSchema(schemaUri);
+  const normalizedErrors = await normalizeOutputFormat(errorOutput, schema);
   const errors = [];
   for (const error of normalizedErrors) {
-    if (skip.has(error.keyword)) {
+    const keywordHandler = getKeyword(error.keyword);
+    if (keywordHandler.simpleApplicator) {
       continue;
     }
 
@@ -31,36 +35,88 @@ export async function betterJsonSchemaErrors(instance, errorOutput, options = {}
 }
 
 /** @type (outputUnit: OutputUnit, schema: Browser<SchemaDocument>, instance: Json) => string */
-const getErrorMessage = (outputUnit, schema) => {
+const getErrorMessage = (outputUnit, schema, instance) => {
   if (outputUnit.keyword === "https://json-schema.org/keyword/minLength") {
     return `The instance should be at least ${Schema.value(schema)} characters`;
   }
 
+  if (outputUnit.keyword === "https://json-schema.org/keyword/maxLength") {
+    return `The instance should be atmost ${Schema.value(schema)} characters long.`;
+  }
+
+  if (outputUnit.keyword === "https://json-schema.org/keyword/type") {
+    const pointer = outputUnit.instanceLocation.replace(/^#/, "");
+    const actualValue = Instance.get(pointer, instance);
+    return `The instance should be of type "${Schema.value(schema)}" but found "${typeof actualValue}".`;
+  }
+
+  if (outputUnit.keyword === "https://json-schema.org/keyword/maximum") {
+    return `The instance should be less than or equal to ${Schema.value(schema)}.`;
+  }
+
+  if (outputUnit.keyword === "https://json-schema.org/keyword/minimum") {
+    return `The instance should be greater than or equal to ${Schema.value(schema)}.`;
+  }
+
+  if (outputUnit.keyword === "https://json-schema.org/keyword/exclusiveMaximum") {
+    return `The instance should be less than ${Schema.value(schema)}.`;
+  }
+
+  if (outputUnit.keyword === "https://json-schema.org/keyword/exclusiveMinimum") {
+    return `The instance should be greater than ${Schema.value(schema)}.`;
+  }
+
+  if (outputUnit.keyword === "https://json-schema.org/keyword/required") {
+    /** @type {Set<string>} */
+    const required = new Set(Schema.value(schema));
+    const pointer = outputUnit.instanceLocation.replace(/^#/, "");
+    const object = /** @type Object */ (Instance.get(pointer, instance));
+    for (const propertyName of Object.keys(object)) {
+      required.delete(propertyName);
+    }
+
+    return `"${outputUnit.instanceLocation}" is missing required property(s): ${[...required].join(", ")}.`;
+  }
+
+  if (outputUnit.keyword === "https://json-schema.org/keyword/multipleOf") {
+    return `The instance should be of multiple of ${Schema.value(schema)}.`;
+  }
+
+  if (outputUnit.keyword === "https://json-schema.org/keyword/maxProperties") {
+    return `The instance should have maximum ${Schema.value(schema)} properties.`;
+  }
+
+  if (outputUnit.keyword === "https://json-schema.org/keyword/minProperties") {
+    return `The instance should have minimum ${Schema.value(schema)} properties.`;
+  }
+
+  if (outputUnit.keyword === "https://json-schema.org/keyword/const") {
+    return `The instance should be equal to ${Schema.value(schema)}.`;
+  }
+
+  if (outputUnit.keyword === "https://json-schema.org/keyword/enum") {
+    /** @type {Array<string>} */
+    const allowedValues = Schema.value(schema);
+    const pointer = outputUnit.instanceLocation.replace(/^#/, "");
+    const currentValue = /** @type {string} */ (Instance.get(pointer, instance));
+
+    const bestMatch = allowedValues
+      .map((value) => ({
+        value,
+        weight: leven(value, currentValue)
+      }))
+      .sort((a, b) => a.weight - b.weight)[0];
+
+    let suggestion = "";
+    if (
+      allowedValues.length === 1
+      || (bestMatch && bestMatch.weight < bestMatch.value.length)
+    ) {
+      suggestion = ` Did you mean "${bestMatch.value}"?`;
+      return `Unexpected value "${currentValue}". ${suggestion}`;
+    }
+
+    return `Unexpected value "${currentValue}". Expected one of: ${allowedValues.join(",")}.`;
+  }
   throw Error("TODO: Error message not implemented");
-  // if (outputUnit.keyword === "https://json-schema.org/keyword/required") {
-  //   const schemaDocument = await Schema.get(outputUnit.absoluteKeywordLocation);
-  //   const required = new Set(Schema.value(schemaDocument));
-  //   const object = Instance.get(outputUnit.instanceLocation, instance);
-  //   for (const propertyName of Instance.keys(object)) {
-  //     required.delete(propertyName);
-  //   }
-
-  //   return `"${outputUnit.instanceLocation}" is missing required property(s): ${[...required]}. Schema location: ${outputUnit.absoluteKeywordLocation}`;
-  // } else {
-  //   // Default message
-  //   return `"${outputUnit.instanceLocation}" fails schema constraint ${outputUnit.absoluteKeywordLocation}`;
-  // }
 };
-
-// These are probably not very useful for human readable messaging, so we'll skip them.
-const skip = new Set([
-  "https://json-schema.org/evaluation/validate",
-  "https://json-schema.org/keyword/ref",
-  "https://json-schema.org/keyword/properties",
-  "https://json-schema.org/keyword/patternProperties",
-  "https://json-schema.org/keyword/items",
-  "https://json-schema.org/keyword/prefixItems",
-  "https://json-schema.org/keyword/if",
-  "https://json-schema.org/keyword/then",
-  "https://json-schema.org/keyword/else"
-]);

@@ -1,15 +1,11 @@
 export const betterJsonSchemaErrors: (
   instance: Json,
   errorOutput: OutputFormat,
-  options?: BetterJsonSchemaErrorsOptions
+  schemaUri: string
 ) => Promise<BetterJsonSchemaErrors>;
 
 export type BetterJsonSchemaErrors = {
   errors: ErrorObject[];
-};
-
-export type BetterJsonSchemaErrorsOptions = {
-  schemaUri?: string;
 };
 
 export type ErrorObject = {
