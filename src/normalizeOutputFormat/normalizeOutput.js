@@ -1,18 +1,21 @@
 import * as Browser from "@hyperjump/browser";
-import { registerSchema, unregisterSchema } from "@hyperjump/json-schema/draft-2020-12";
-import { getSchema } from "@hyperjump/json-schema/experimental";
+import { getKeywordByName } from "@hyperjump/json-schema/experimental";
 import { pointerSegments } from "@hyperjump/json-pointer";
-import { randomUUID } from "crypto";
 
 /**
- * @import { OutputFormat, OutputUnit, NormalizedError, SchemaObject} from "../index.d.ts";
+ * @import {
+ *   OutputFormat,
+ *   OutputUnit,
+ *   NormalizedError,
+ *   SchemaObject
+ * } from "../index.d.ts";
  * @import { SchemaDocument } from "@hyperjump/json-schema/experimental";
  * @import { Browser as BrowserType } from "@hyperjump/browser";
  */
 
 /**
  * @param {OutputFormat} errorOutput
- * @param {SchemaObject} schema
+ * @param {BrowserType<SchemaDocument>} schema
  * @returns {Promise<NormalizedError[]>}
  */
 export async function normalizeOutputFormat(errorOutput, schema) {
@@ -23,52 +26,47 @@ export async function normalizeOutputFormat(errorOutput, schema) {
     throw new Error("error Output must follow Draft 2019-09");
   }
 
-  const keywords = new Set([
-    "type", "minLength", "maxLength", "minimum", "maximum", "format", "pattern",
-    "enum", "const", "required", "items", "properties", "allOf", "anyOf", "oneOf",
-    "not", "contains", "uniqueItems", "additionalProperties", "minItems", "maxItems",
-    "minProperties", "maxProperties", "dependentRequired", "dependencies"
-  ]);
-
-  /** @type {(errorOutput: OutputUnit) => Promise<void>} */
-  async function collectErrors(error) {
-    if (error.valid) return;
-
-    if (!("instanceLocation" in error) || !("absoluteKeywordLocation" in error || "keywordLocation" in error)) {
-      throw new Error("error Output must follow Draft 2019-09");
-    }
-
-    const absoluteKeywordLocation = error.absoluteKeywordLocation
-      ?? await toAbsoluteKeywordLocation(schema, /** @type string */ (error.keywordLocation));
-
-    const fragment = absoluteKeywordLocation.split("#")[1];
-    const lastSegment = fragment.split("/").filter(Boolean).pop();
-
-    // make a check here to remove the schemaLocation.
-    if (lastSegment && keywords.has(lastSegment)) {
-      output.push({
-        valid: false,
-        absoluteKeywordLocation,
-        instanceLocation: normalizeInstanceLocation(error.instanceLocation)
-      });
-    }
-
-    if (error.errors) {
-      for (const nestedError of error.errors) {
-        await collectErrors(nestedError); // Recursive
-      }
-    }
-  }
-
   if (!errorOutput.errors) {
     throw new Error("error Output must follow Draft 2019-09");
   }
 
   for (const err of errorOutput.errors) {
-    await collectErrors(err);
+    await collectErrors(err, output, schema);
   }
 
   return output;
+}
+
+/** @type {(errorOutput: OutputUnit, output: NormalizedError[], schema: BrowserType<SchemaDocument>) => Promise<void>} */
+async function collectErrors(error, output, schema) {
+  if (error.valid) return;
+
+  if (!("instanceLocation" in error) || !("absoluteKeywordLocation" in error || "keywordLocation" in error)) {
+    throw new Error("error Output must follow Draft 2019-09");
+  }
+
+  const absoluteKeywordLocation = error.absoluteKeywordLocation
+    ?? await toAbsoluteKeywordLocation(schema, /** @type string */ (error.keywordLocation));
+
+  const fragment = absoluteKeywordLocation.split("#")[1];
+  const lastSegment = fragment.split("/").filter(Boolean).pop();
+  const keywordHandler = getKeywordByName(/** @type string */ (lastSegment), schema.document.dialectId);
+
+  // make a check here to remove the schemaLocation.
+  if (lastSegment && !keywordHandler.id.startsWith("https://json-schema.org/keyword/unknown")) {
+    output.push({
+      valid: false,
+      keyword: error.keyword ?? keywordHandler.id,
+      absoluteKeywordLocation,
+      instanceLocation: normalizeInstanceLocation(error.instanceLocation)
+    });
+  }
+
+  if (error.errors) {
+    for (const nestedError of error.errors) {
+      await collectErrors(nestedError, output, schema); // Recursive
+    }
+  }
 }
 
 /** @type {(location: string) => string} */
@@ -78,22 +76,14 @@ function normalizeInstanceLocation(location) {
 
 /**
  * Convert keywordLocation to absoluteKeywordLocation
- * @param {SchemaObject} schema
+ * @param {BrowserType<SchemaDocument>} schema
  * @param {string} keywordLocation
  * @returns {Promise<string>}
  */
 export async function toAbsoluteKeywordLocation(schema, keywordLocation) {
-  const uri = `urn:uuid:${randomUUID()}`;
-  try {
-    registerSchema(schema, uri);
-
-    let browser = await getSchema(uri);
-    for (const segment of pointerSegments(keywordLocation)) {
-      browser = /** @type BrowserType<SchemaDocument> */ (await Browser.step(segment, browser));
-    }
-
-    return `${browser.document.baseUri}#${browser.cursor}`;
-  } finally {
-    unregisterSchema(uri);
+  for (const segment of pointerSegments(keywordLocation)) {
+    schema = /** @type BrowserType<SchemaDocument> */ (await Browser.step(segment, schema));
   }
+
+  return `${schema.document.baseUri}#${schema.cursor}`;
 }
