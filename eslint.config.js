@@ -1,6 +1,5 @@
 import tseslint from "typescript-eslint";
 import stylistic from "@stylistic/eslint-plugin";
-// @ts-expect-error No types available
 import importPlugin from "eslint-plugin-import";
 
 export default tseslint.config(
