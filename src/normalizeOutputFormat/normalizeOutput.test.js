@@ -391,4 +391,136 @@ describe("Error Output Normalization", () => {
       }
     ]);
   });
+
+  test("should return a pattern error message", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      pattern: "^[a-z]+$"
+    }, schemaUri);
+
+    const instance = "ABC123";
+
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/pattern",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    expect(result.errors).to.eql([{
+      schemaLocation: "https://example.com/main#/pattern",
+      instanceLocation: "#",
+      message: "The instance should match the pattern: ^[a-z]+$."
+    }]);
+  });
+
+  test("should return a minItems error message", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      type: "array",
+      minItems: 3
+    }, schemaUri);
+
+    const instance = [1];
+
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/minItems",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    expect(result.errors).to.eql([{
+      schemaLocation: "https://example.com/main#/minItems",
+      instanceLocation: "#",
+      message: "The instance should have at least 3 items."
+    }]);
+  });
+
+  test("should return a maxItems error message", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      type: "array",
+      maxItems: 2
+    }, schemaUri);
+
+    const instance = [1, 2, 3];
+
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/maxItems",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    expect(result.errors).to.eql([{
+      schemaLocation: "https://example.com/main#/maxItems",
+      instanceLocation: "#",
+      message: "The instance should have at most 2 items."
+    }]);
+  });
+
+  test("should return a uniqueItems error message", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      type: "array",
+      uniqueItems: true
+    }, schemaUri);
+
+    const instance = [1, 1];
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/uniqueItems",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    expect(result.errors).to.eql([{
+      schemaLocation: "https://example.com/main#/uniqueItems",
+      instanceLocation: "#",
+      message: "The array should not contain duplicate items."
+    }]);
+  });
+
+  test("should return a format error message for email", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      format: "email"
+    }, schemaUri);
+
+    const instance = "not-an-email";
+
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/format",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    expect(result.errors).to.eql([{
+      schemaLocation: "https://example.com/main#/format",
+      instanceLocation: "#",
+      message: "The instance should match the format: email."
+    }]);
+  });
 });

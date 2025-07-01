@@ -118,5 +118,25 @@ const getErrorMessage = (outputUnit, schema, instance) => {
 
     return `Unexpected value "${currentValue}". Expected one of: ${allowedValues.join(",")}.`;
   }
+
+  if (outputUnit.keyword === "https://json-schema.org/keyword/pattern") {
+    return `The instance should match the pattern: ${Schema.value(schema)}.`;
+  }
+
+  if (outputUnit.keyword === "https://json-schema.org/keyword/minItems") {
+    return `The instance should have at least ${Schema.value(schema)} items.`;
+  }
+
+  if (outputUnit.keyword === "https://json-schema.org/keyword/maxItems") {
+    return `The instance should have at most ${Schema.value(schema)} items.`;
+  }
+
+  if (outputUnit.keyword === "https://json-schema.org/keyword/uniqueItems") {
+    return `The array should not contain duplicate items.`;
+  }
+
+  if (outputUnit.keyword === "https://json-schema.org/keyword/format") {
+    return `The instance should match the format: ${Schema.value(schema)}.`;
+  }
   throw Error("TODO: Error message not implemented");
 };
