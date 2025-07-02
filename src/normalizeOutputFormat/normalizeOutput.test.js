@@ -284,7 +284,7 @@ describe("Error Output Normalization", () => {
     ]);
   });
 
-  test("when error output doesnot contain any of these three keyword (valid, absoluteKeywordLocation, instanceLocation)", async () => {
+  test("when error output does not contain any of these three keyword (valid, absoluteKeywordLocation, instanceLocation)", async () => {
     registerSchema({
       $schema: "https://json-schema.org/draft/2020-12/schema",
       items: { $ref: "#/$defs/foo" },

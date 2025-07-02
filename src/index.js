@@ -41,7 +41,7 @@ const getErrorMessage = (outputUnit, schema, instance) => {
   }
 
   if (outputUnit.keyword === "https://json-schema.org/keyword/maxLength") {
-    return `The instance should be atmost ${Schema.value(schema)} characters long.`;
+    return `The instance should be at most ${Schema.value(schema)} characters long.`;
   }
 
   if (outputUnit.keyword === "https://json-schema.org/keyword/type") {

@@ -30,9 +30,11 @@
   "devDependencies": {
     "@stylistic/eslint-plugin": "*",
     "@types/node": "*",
+    "eslint": "^9.30.0",
     "eslint-import-resolver-typescript": "*",
     "eslint-plugin-import": "*",
     "typedoc": "*",
+    "typescript": "^5.8.3",
     "typescript-eslint": "*",
     "vitest": "*"
   },
