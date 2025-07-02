@@ -3,6 +3,10 @@ import { betterJsonSchemaErrors } from "./index.js";
 import { registerSchema } from "@hyperjump/json-schema/draft-2020-12";
 import { unregisterSchema } from "@hyperjump/json-schema";
 
+/**
+ * @import { OutputFormat} from "./index.d.ts"
+ */
+
 describe("Error messages", () => {
   const schemaUri = "https://example.com/main";
 
@@ -17,6 +21,8 @@ describe("Error messages", () => {
     }, schemaUri);
 
     const instance = "aa";
+
+    /** @type OutputFormat */
     const output = {
       valid: false,
       errors: [
@@ -28,12 +34,11 @@ describe("Error messages", () => {
     };
 
     const result = await betterJsonSchemaErrors(instance, output, schemaUri);
-    expect(result.errors).to.eql([
-      {
-        schemaLocation: "https://example.com/main#/minLength",
-        instanceLocation: "#",
-        message: "The instance should be at least 3 characters"
-      }
+    expect(result.errors).to.eql([{
+      schemaLocation: "https://example.com/main#/minLength",
+      instanceLocation: "#",
+      message: "The instance should be at least 3 characters"
+    }
     ]);
   });
 
@@ -44,6 +49,8 @@ describe("Error messages", () => {
     }, schemaUri);
 
     const instance = "aaaa";
+
+    /** @type OutputFormat */
     const output = {
       valid: false,
       errors: [
@@ -55,12 +62,11 @@ describe("Error messages", () => {
     };
 
     const result = await betterJsonSchemaErrors(instance, output, schemaUri);
-    expect(result.errors).to.eql([
-      {
-        schemaLocation: "https://example.com/main#/maxLength",
-        instanceLocation: "#",
-        message: "The instance should be at most 3 characters long."
-      }
+    expect(result.errors).to.eql([{
+      schemaLocation: "https://example.com/main#/maxLength",
+      instanceLocation: "#",
+      message: "The instance should be at most 3 characters long."
+    }
     ]);
   });
 
@@ -71,6 +77,8 @@ describe("Error messages", () => {
     }, schemaUri);
 
     const instance = "aaaa";
+
+    /** @type OutputFormat */
     const output = {
       valid: false,
       errors: [
@@ -82,22 +90,23 @@ describe("Error messages", () => {
     };
 
     const result = await betterJsonSchemaErrors(instance, output, schemaUri);
-    expect(result.errors).to.eql([
-      {
-        schemaLocation: "https://example.com/main#/type",
-        instanceLocation: "#",
-        message: `The instance should be of type "number" but found "string".`
-      }
+    expect(result.errors).to.eql([{
+      schemaLocation: "https://example.com/main#/type",
+      instanceLocation: "#",
+      message: `The instance should be of type "number" but found "string".`
+    }
     ]);
   });
 
-  test("maximum", async () => {
+  test("maxmimum", async () => {
     registerSchema({
       $schema: "https://json-schema.org/draft/2020-12/schema",
       maximum: 10
     }, schemaUri);
 
     const instance = 11;
+
+    /** @type OutputFormat */
     const output = {
       valid: false,
       errors: [
@@ -109,22 +118,23 @@ describe("Error messages", () => {
     };
 
     const result = await betterJsonSchemaErrors(instance, output, schemaUri);
-    expect(result.errors).to.eql([
-      {
-        schemaLocation: "https://example.com/main#/maximum",
-        instanceLocation: "#",
-        message: `The instance should be less than or equal to 10.`
-      }
+    expect(result.errors).to.eql([{
+      schemaLocation: "https://example.com/main#/maximum",
+      instanceLocation: "#",
+      message: `The instance should be less than or equal to 10.`
+    }
     ]);
   });
 
-  test("minimum", async () => {
+  test("mimimum", async () => {
     registerSchema({
       $schema: "https://json-schema.org/draft/2020-12/schema",
       minimum: 10
     }, schemaUri);
 
     const instance = 9.9;
+
+    /** @type OutputFormat */
     const output = {
       valid: false,
       errors: [
@@ -136,12 +146,11 @@ describe("Error messages", () => {
     };
 
     const result = await betterJsonSchemaErrors(instance, output, schemaUri);
-    expect(result.errors).to.eql([
-      {
-        schemaLocation: "https://example.com/main#/minimum",
-        instanceLocation: "#",
-        message: `The instance should be greater than or equal to 10.`
-      }
+    expect(result.errors).to.eql([{
+      schemaLocation: "https://example.com/main#/minimum",
+      instanceLocation: "#",
+      message: `The instance should be greater than or equal to 10.`
+    }
     ]);
   });
 
@@ -152,6 +161,8 @@ describe("Error messages", () => {
     }, schemaUri);
 
     const instance = 11;
+
+    /** @type OutputFormat */
     const output = {
       valid: false,
       errors: [
@@ -163,12 +174,11 @@ describe("Error messages", () => {
     };
 
     const result = await betterJsonSchemaErrors(instance, output, schemaUri);
-    expect(result.errors).to.eql([
-      {
-        schemaLocation: "https://example.com/main#/exclusiveMaximum",
-        instanceLocation: "#",
-        message: `The instance should be less than 10.`
-      }
+    expect(result.errors).to.eql([{
+      schemaLocation: "https://example.com/main#/exclusiveMaximum",
+      instanceLocation: "#",
+      message: `The instance should be less than 10.`
+    }
     ]);
   });
 
@@ -179,6 +189,8 @@ describe("Error messages", () => {
     }, schemaUri);
 
     const instance = 9;
+
+    /** @type OutputFormat */
     const output = {
       valid: false,
       errors: [
@@ -190,12 +202,11 @@ describe("Error messages", () => {
     };
 
     const result = await betterJsonSchemaErrors(instance, output, schemaUri);
-    expect(result.errors).to.eql([
-      {
-        schemaLocation: "https://example.com/main#/exclusiveMinimum",
-        instanceLocation: "#",
-        message: `The instance should be greater than 10.`
-      }
+    expect(result.errors).to.eql([{
+      schemaLocation: "https://example.com/main#/exclusiveMinimum",
+      instanceLocation: "#",
+      message: `The instance should be greater than 10.`
+    }
     ]);
   });
 
@@ -203,9 +214,12 @@ describe("Error messages", () => {
     registerSchema({
       $schema: "https://json-schema.org/draft/2020-12/schema",
       required: ["foo", "bar", "baz"]
+
     }, schemaUri);
 
     const instance = { foo: 1, bar: 2, extra: true };
+
+    /** @type OutputFormat */
     const output = {
       valid: false,
       errors: [
@@ -217,12 +231,11 @@ describe("Error messages", () => {
     };
 
     const result = await betterJsonSchemaErrors(instance, output, schemaUri);
-    expect(result.errors).to.eql([
-      {
-        schemaLocation: "https://example.com/main#/required",
-        instanceLocation: "#",
-        message: `"#" is missing required property(s): baz.`
-      }
+    expect(result.errors).to.eql([{
+      schemaLocation: "https://example.com/main#/required",
+      instanceLocation: "#",
+      message: `"#" is missing required property(s): baz.`
+    }
     ]);
   });
 
@@ -230,9 +243,12 @@ describe("Error messages", () => {
     registerSchema({
       $schema: "https://json-schema.org/draft/2020-12/schema",
       multipleOf: 5
+
     }, schemaUri);
 
     const instance = 11;
+
+    /** @type OutputFormat */
     const output = {
       valid: false,
       errors: [
@@ -244,12 +260,11 @@ describe("Error messages", () => {
     };
 
     const result = await betterJsonSchemaErrors(instance, output, schemaUri);
-    expect(result.errors).to.eql([
-      {
-        schemaLocation: "https://example.com/main#/multipleOf",
-        instanceLocation: "#",
-        message: `The instance should be of multiple of 5.`
-      }
+    expect(result.errors).to.eql([{
+      schemaLocation: "https://example.com/main#/multipleOf",
+      instanceLocation: "#",
+      message: `The instance should be of multiple of 5.`
+    }
     ]);
   });
 
@@ -257,9 +272,12 @@ describe("Error messages", () => {
     registerSchema({
       $schema: "https://json-schema.org/draft/2020-12/schema",
       maxProperties: 2
+
     }, schemaUri);
 
     const instance = { foo: 1, bar: 2, baz: 3 };
+
+    /** @type OutputFormat */
     const output = {
       valid: false,
       errors: [
@@ -271,12 +289,11 @@ describe("Error messages", () => {
     };
 
     const result = await betterJsonSchemaErrors(instance, output, schemaUri);
-    expect(result.errors).to.eql([
-      {
-        schemaLocation: "https://example.com/main#/maxProperties",
-        instanceLocation: "#",
-        message: `The instance should have maximum 2 properties.`
-      }
+    expect(result.errors).to.eql([{
+      schemaLocation: "https://example.com/main#/maxProperties",
+      instanceLocation: "#",
+      message: `The instance should have maximum 2 properties.`
+    }
     ]);
   });
 
@@ -284,9 +301,12 @@ describe("Error messages", () => {
     registerSchema({
       $schema: "https://json-schema.org/draft/2020-12/schema",
       minProperties: 2
+
     }, schemaUri);
 
     const instance = { foo: 1 };
+
+    /** @type OutputFormat */
     const output = {
       valid: false,
       errors: [
@@ -298,12 +318,11 @@ describe("Error messages", () => {
     };
 
     const result = await betterJsonSchemaErrors(instance, output, schemaUri);
-    expect(result.errors).to.eql([
-      {
-        schemaLocation: "https://example.com/main#/minProperties",
-        instanceLocation: "#",
-        message: `The instance should have minimum 2 properties.`
-      }
+    expect(result.errors).to.eql([{
+      schemaLocation: "https://example.com/main#/minProperties",
+      instanceLocation: "#",
+      message: `The instance should have minimum 2 properties.`
+    }
     ]);
   });
 
@@ -311,9 +330,12 @@ describe("Error messages", () => {
     registerSchema({
       $schema: "https://json-schema.org/draft/2020-12/schema",
       const: 2
+
     }, schemaUri);
 
     const instance = 3;
+
+    /** @type OutputFormat */
     const output = {
       valid: false,
       errors: [
@@ -325,12 +347,11 @@ describe("Error messages", () => {
     };
 
     const result = await betterJsonSchemaErrors(instance, output, schemaUri);
-    expect(result.errors).to.eql([
-      {
-        schemaLocation: "https://example.com/main#/const",
-        instanceLocation: "#",
-        message: `The instance should be equal to 2.`
-      }
+    expect(result.errors).to.eql([{
+      schemaLocation: "https://example.com/main#/const",
+      instanceLocation: "#",
+      message: `The instance should be equal to 2.`
+    }
     ]);
   });
 
@@ -338,9 +359,12 @@ describe("Error messages", () => {
     registerSchema({
       $schema: "https://json-schema.org/draft/2020-12/schema",
       enum: ["red", "green", "blue"]
+
     }, schemaUri);
 
     const instance = "rwd";
+
+    /** @type OutputFormat */
     const output = {
       valid: false,
       errors: [
@@ -352,15 +376,12 @@ describe("Error messages", () => {
     };
 
     const result = await betterJsonSchemaErrors(instance, output, schemaUri);
-    expect(result.errors).to.eql([
-      {
-        schemaLocation: "https://example.com/main#/enum",
-        instanceLocation: "#",
-        message: `Unexpected value "rwd".  Did you mean "red"?`
-      }
-    ]);
+    expect(result.errors).to.eql([{
+      schemaLocation: "https://example.com/main#/enum",
+      instanceLocation: "#",
+      message: `Unexpected value "rwd".  Did you mean "red"?`
+    }]);
   });
-
   test("pattern", async () => {
     registerSchema({
       $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -499,4 +520,3 @@ describe("Error messages", () => {
     ]);
   });
 });
-
