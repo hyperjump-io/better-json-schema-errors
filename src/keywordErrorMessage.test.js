@@ -382,4 +382,267 @@ describe("Error messages", () => {
       message: `Unexpected value "rwd".  Did you mean "red"?`
     }]);
   });
+
+  test("maxItems", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      maxItems: 3
+    }, schemaUri);
+
+    const instance = [1, 3, 4, 5];
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/maxItems",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    expect(result.errors).to.eql([{
+      schemaLocation: "https://example.com/main#/maxItems",
+      instanceLocation: "#",
+      message: `The instance should contain maximum 3 items in the array.`
+    }
+    ]);
+  });
+
+  test("minItems", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      minItems: 3
+    }, schemaUri);
+
+    const instance = [1, 3];
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/minItems",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    expect(result.errors).to.eql([{
+      schemaLocation: "https://example.com/main#/minItems",
+      instanceLocation: "#",
+      message: `The instance should contain minimum 3 items in the array.`
+    }
+    ]);
+  });
+
+  test("uniqueItems", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      uniqueItems: true
+    }, schemaUri);
+
+    const instance = [1, 1];
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/uniqueItems",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    expect(result.errors).to.eql([{
+      schemaLocation: "https://example.com/main#/uniqueItems",
+      instanceLocation: "#",
+      message: `The instance should have unique items in the array.`
+    }
+    ]);
+  });
+
+  test("format: email", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      format: "email"
+    }, schemaUri);
+
+    const instance = "not-an-email";
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/format",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: "https://example.com/main#/format",
+        instanceLocation: "#",
+        message: "The instance should match the format: email."
+      }
+    ]);
+  });
+
+  test("pattern", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      pattern: "^[a-z]+$"
+    }, schemaUri);
+
+    const instance = "ABC123";
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/pattern",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: "https://example.com/main#/pattern",
+        instanceLocation: "#",
+        message: "The instance should match the pattern: ^[a-z]+$."
+      }
+    ]);
+  });
+
+  test("items", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      items: { type: "number" }
+    }, schemaUri);
+
+    const instance = [1, -3.4, "", "foo"];
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/items/type",
+          instanceLocation: "#/3"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/items/type",
+          instanceLocation: "#/2"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    expect(result.errors).to.eql([
+      {
+        instanceLocation: "#/3",
+        message: `The instance should be of type "number" but found "string".`,
+        schemaLocation: "https://example.com/main#/items/type"
+      },
+      {
+        instanceLocation: "#/2",
+        message: `The instance should be of type "number" but found "string".`,
+        schemaLocation: "https://example.com/main#/items/type"
+      }
+    ]);
+  });
+
+  test("prefixItems", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      prefixItems: [
+        { type: "number" },
+        { type: "boolean" },
+        { type: "string" }
+      ]
+    }, schemaUri);
+    const instance = [42, "hehe", 100];
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          keyword: "https://json-schema.org/keyword/type",
+          absoluteKeywordLocation: "https://example.com/main#/prefixItems/1/type",
+          instanceLocation: "#/1",
+          valid: false
+        },
+        {
+          keyword: "https://json-schema.org/keyword/type",
+          absoluteKeywordLocation: "https://example.com/main#/prefixItems/2/type",
+          instanceLocation: "#/2",
+          valid: false
+        },
+        {
+          keyword: "https://json-schema.org/keyword/prefixItems",
+          absoluteKeywordLocation: "https://example.com/main#/prefixItems",
+          instanceLocation: "#",
+          valid: false
+        }
+      ]
+    };
+    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    expect(result.errors).to.eql([
+      {
+        instanceLocation: "#/1",
+        message: `The instance should be of type "boolean" but found "string".`,
+        schemaLocation: "https://example.com/main#/prefixItems/1/type"
+      },
+      {
+        instanceLocation: "#/2",
+        message: `The instance should be of type "string" but found "number".`,
+        schemaLocation: "https://example.com/main#/prefixItems/2/type"
+      }]);
+  });
+
+  // test("anyOf where the instance doesn't match type of either of the alternatives", async () => {
+  //   registerSchema({
+  //     $schema: "https://json-schema.org/draft/2020-12/schema",
+  //     anyOf: [
+  //       { type: "string" },
+  //       { type: "number" }
+  //     ]
+  //   }, schemaUri);
+  //   const instance = false;
+
+  //   /** @type OutputFormat */
+  //   const output = {
+  //     valid: false,
+  //     errors: [
+  //       {
+  //         absoluteKeywordLocation: "https://example.com/main#/anyOf/0/type",
+  //         instanceLocation: "#"
+  //       },
+  //       {
+  //         absoluteKeywordLocation: "https://example.com/main#/anyOf/1/type",
+  //         instanceLocation: "#"
+  //       },
+  //       {
+  //         absoluteKeywordLocation: "https://example.com/main#/anyOf",
+  //         instanceLocation: "#"
+  //       }
+  //     ]
+  //   };
+
+  //   const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+  //   expect(result.errors).to.eql([
+  //     {
+  //       schemaLocation: "https://example.com/main#/anyOf",
+  //       instanceLocation: "#",
+  //       message: "The instance must be a 'string' or 'number'. Found 'boolean'"
+  //     }
+  //   ]);
+  // });
 });
