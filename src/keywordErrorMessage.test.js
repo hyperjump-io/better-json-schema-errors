@@ -607,42 +607,142 @@ describe("Error messages", () => {
       }]);
   });
 
-  // test("anyOf where the instance doesn't match type of either of the alternatives", async () => {
-  //   registerSchema({
-  //     $schema: "https://json-schema.org/draft/2020-12/schema",
-  //     anyOf: [
-  //       { type: "string" },
-  //       { type: "number" }
-  //     ]
-  //   }, schemaUri);
-  //   const instance = false;
+  test("anyOf where the instance doesn't match type of either of the alternatives", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      anyOf: [
+        { type: "string" },
+        { type: "number" }
+      ]
+    }, schemaUri);
+    const instance = false;
 
-  //   /** @type OutputFormat */
-  //   const output = {
-  //     valid: false,
-  //     errors: [
-  //       {
-  //         absoluteKeywordLocation: "https://example.com/main#/anyOf/0/type",
-  //         instanceLocation: "#"
-  //       },
-  //       {
-  //         absoluteKeywordLocation: "https://example.com/main#/anyOf/1/type",
-  //         instanceLocation: "#"
-  //       },
-  //       {
-  //         absoluteKeywordLocation: "https://example.com/main#/anyOf",
-  //         instanceLocation: "#"
-  //       }
-  //     ]
-  //   };
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/0/type",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/1/type",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf",
+          instanceLocation: "#"
+        }
+      ]
+    };
 
-  //   const result = await betterJsonSchemaErrors(instance, output, schemaUri);
-  //   expect(result.errors).to.eql([
-  //     {
-  //       schemaLocation: "https://example.com/main#/anyOf",
-  //       instanceLocation: "#",
-  //       message: "The instance must be a 'string' or 'number'. Found 'boolean'"
-  //     }
-  //   ]);
-  // });
+    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: "https://example.com/main#/anyOf",
+        instanceLocation: "#",
+        message: `The instance must be a number or string. Found 'boolean'.`
+      }
+    ]);
+  });
+
+  test("anyOf - one type matches, but fails constraint (minLength)", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      anyOf: [
+        { type: "string", minLength: 5 },
+        { type: "number" }
+      ]
+    }, schemaUri);
+
+    const instance = "abc";
+
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/0/minLength",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/1/type",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: `https://example.com/main#/anyOf/0/minLength`,
+        instanceLocation: "#",
+        message: "The instance should be at least 5 characters"
+      }
+    ]);
+  });
+
+  test("anyOf - multiple types match, pick based on field overlap", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      anyOf: [
+        {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            age: { type: "number" }
+          },
+          required: ["name", "age"]
+        },
+        {
+          type: "object",
+          properties: {
+            title: { type: "string" },
+            author: { type: "string" },
+            ID: { type: "string", pattern: "^[0-9\\-]+$" }
+          },
+          required: ["title", "author", "ID"]
+        }
+      ]
+    }, schemaUri);
+
+    const instance = {
+      title: "Clean Code",
+      author: "Robert Martin",
+      ID: "NotValidId"
+    };
+
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/1/properties/ID/pattern",
+          instanceLocation: "#/ID"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/0/required",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/1/properties",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf",
+          instanceLocation: "#"
+        }
+      ]
+    };
+    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: `${schemaUri}#/anyOf/1/properties/ID/pattern`,
+        instanceLocation: "#/ID",
+        message: "The instance should match the pattern: ^[0-9\\-]+$."
+      }
+    ]);
+  });
 });
