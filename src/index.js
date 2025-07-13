@@ -1,6 +1,6 @@
 import { normalizeOutputFormat } from "./normalizeOutputFormat/normalizeOutput.js";
 import * as Schema from "@hyperjump/browser";
-import { getSchema } from "@hyperjump/json-schema/experimental";
+import { getKeywordByName, getSchema } from "@hyperjump/json-schema/experimental";
 import * as Instance from "@hyperjump/json-pointer";
 import leven from "leven";
 
@@ -19,7 +19,7 @@ export async function betterJsonSchemaErrors(instance, errorOutput, schemaUri) {
   const output = { errors: [] };
 
   for (const errorHandler of errorHandlers) {
-    const errorObject = await errorHandler(normalizedErrors, instance);
+    const errorObject = await errorHandler(normalizedErrors, instance, schema);
     if (errorObject) {
       output.errors.push(...errorObject);
     }
@@ -29,31 +29,64 @@ export async function betterJsonSchemaErrors(instance, errorOutput, schemaUri) {
 }
 
 /**
- * @typedef {(normalizedErrors: NormalizedError[], instance: Json) => Promise<ErrorObject[]>} ErrorHandler
+ * @typedef {(normalizedErrors: NormalizedError[], instance: Json, schema: Browser<SchemaDocument>) => Promise<ErrorObject[]>} ErrorHandler
  */
 
 /** @type ErrorHandler[] */
 const errorHandlers = [
-  // async (normalizedErrors) => {
-  //   /** @type ErrorObject[] */
-  //   const errors = [];
-  //   for (const error of normalizedErrors) {
-  //     if (error.keyword === "https://json-schema.org/keyword/anyOf") {
-  //       // const outputArray = applicatorChildErrors(outputUnit.absoluteKeywordLocation, normalizedErrors);
-  //       // const failingTypeErrors = outputArray
-  //       //   .filter((err) => err.keyword === "https://json-schema.org/keyword/type")
-  //       //   .map((err) => err.instanceLocation);
-  //       // const numberOfAlternatives = /** @type any[] */ (Schema.value(schema)).length;
-  //       errors.push({
-  //         message: `The instance must be a 'string' or 'number'. Found 'boolean'`,
-  //         instanceLocation: error.instanceLocation,
-  //         schemaLocation: error.absoluteKeywordLocation
-  //       });
-  //     }
-  //   }
 
-  //   return errors;
-  // },
+  // `anyOf` handler
+  async (normalizedErrors, instance, schema) => {
+    /** @type ErrorObject[] */
+    const errors = [];
+
+    for (const error of normalizedErrors) {
+      if (error.keyword === "https://json-schema.org/keyword/anyOf") {
+        const anyOfSchema = await getSchema(error.absoluteKeywordLocation);
+        const numberOfAlternatives = Schema.length(anyOfSchema);
+        // const discriminatorKeys = await findDiscriminatorKeywords(anyOfSchema);
+        const outputArray = applicatorChildErrors(error.absoluteKeywordLocation, normalizedErrors);
+
+        const keyword = getKeywordByName("type", schema.document.dialectId);
+        const matchingKeywordErrors = outputArray.filter((e) => e.keyword === keyword.id);
+
+        if (isOnlyOneTypeValid(matchingKeywordErrors, numberOfAlternatives)) {
+          // all the matchingKeywordErrors are filter out from the outputArray and push in the normalizedErrors array to produce the output.
+          const remainingErrors = outputArray.filter((err) => {
+            return !matchingKeywordErrors.some((matchingErr) => {
+              return matchingErr.absoluteKeywordLocation === err.absoluteKeywordLocation;
+            });
+          });
+          normalizedErrors.push(...remainingErrors);
+        } else if (matchingKeywordErrors.length === numberOfAlternatives) {
+          const noMatchFound = await noDiscriminatorKeyMatchError(matchingKeywordErrors, error, instance);
+          errors.push(noMatchFound);
+        } else if (false) {
+          // Discriminator cases
+        } else if (jsonTypeOf(instance) === "object") {
+          // Number of matching properties
+          const selectedAlternative = outputArray.find((error) => {
+            return error.keyword = "https://json-schema.org/keyword/properties";
+          })?.absoluteKeywordLocation;
+          const remainingErrors = outputArray.filter((err) => {
+            return err.absoluteKeywordLocation.startsWith(/** @type string */ (selectedAlternative));
+          });
+          normalizedErrors.push(...remainingErrors);
+        } else {
+          // I don't know yet what to do
+
+          // {
+          //   "$schema": "https://json-schema.org/draft/2020-12/schema",
+          //   "anyOf": [
+          //     { "required": [ "foo" ] },
+          //     { "required": [ "bar" ] }
+          //   ]
+          // }
+        }
+      }
+    }
+    return errors;
+  },
 
   async (normalizedErrors) => {
     /** @type ErrorObject[] */
@@ -393,14 +426,88 @@ const errorHandlers = [
   }
 ];
 
-// /**
-//  * Groups errors whose absoluteKeywordLocation starts with a given prefix.
-//  * @param {string} parentKeywordLocation
-//  * @param {NormalizedError[]} allErrors
-//  * @returns {NormalizedError[]}
-//  */
-// function applicatorChildErrors(parentKeywordLocation, allErrors) {
-//   return allErrors.filter((err) =>
-//   /** @type string */ (err.absoluteKeywordLocation).startsWith(parentKeywordLocation + "/")
-//   );
-// }
+/**
+ * Groups errors whose absoluteKeywordLocation starts with a given prefix.
+ * @param {string} parentKeywordLocation
+ * @param {NormalizedError[]} allErrors
+ * @returns {NormalizedError[]}
+ */
+function applicatorChildErrors(parentKeywordLocation, allErrors) {
+  const matching = [];
+
+  for (let i = allErrors.length - 1; i >= 0; i--) {
+    const err = allErrors[i];
+    if (err.absoluteKeywordLocation.startsWith(parentKeywordLocation + "/")) {
+      matching.push(err);
+      allErrors.splice(i, 1);
+    }
+  }
+
+  return matching;
+}
+
+/**
+ * @param {NormalizedError[]} matchingErrors
+ * @param {number} numOfAlternatives
+ * @returns {boolean}
+ */
+function isOnlyOneTypeValid(matchingErrors, numOfAlternatives) {
+  const typeErrors = matchingErrors.filter(
+    (e) => e.keyword === "https://json-schema.org/keyword/type"
+  );
+  return numOfAlternatives - typeErrors.length === 1;
+}
+
+/**
+ * @param {NormalizedError[]} matchingErrors
+ * @param {NormalizedError} parentError
+ * @param {Json} instance
+ * @returns {Promise<ErrorObject>}
+ */
+async function noDiscriminatorKeyMatchError(matchingErrors, parentError, instance) {
+  const expectedTypes = [];
+
+  for (const err of matchingErrors) {
+    const typeSchema = await getSchema(err.absoluteKeywordLocation);
+    const typeValue = /** @type any[] */ (Schema.value(typeSchema));
+    expectedTypes.push(typeValue);
+  }
+
+  const pointer = parentError.instanceLocation.replace(/^#/, "");
+  const actualValue = /** @type Json */ (Instance.get(pointer, instance));
+  const actualType = jsonTypeOf(actualValue);
+
+  const expectedString = expectedTypes.join(" or ");
+
+  return {
+    message: `The instance must be a ${expectedString}. Found '${actualType}'.`,
+    instanceLocation: parentError.instanceLocation,
+    schemaLocation: parentError.absoluteKeywordLocation
+  };
+}
+
+/** @type (value: Json) => "null" | "boolean" | "number" | "string" | "array" | "object" | "undefined" */
+const jsonTypeOf = (value) => {
+  const jsType = typeof value;
+
+  switch (jsType) {
+    case "number":
+    case "string":
+    case "boolean":
+    case "undefined":
+      return jsType;
+    case "object":
+      if (Array.isArray(value)) {
+        return "array";
+      } else if (value === null) {
+        return "null";
+      } else if (Object.getPrototypeOf(value) === Object.prototype) {
+        return "object";
+      }
+    default: {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+      const type = jsType === "object" ? Object.getPrototypeOf(value).constructor.name ?? "anonymous" : jsType;
+      throw Error(`Not a JSON compatible type: ${type}`);
+    }
+  }
+};
