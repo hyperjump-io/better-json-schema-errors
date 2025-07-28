@@ -1,78 +1,250 @@
-import * as Browser from "@hyperjump/browser";
-import { getKeywordByName } from "@hyperjump/json-schema/experimental";
+import { compile, getSchema } from "@hyperjump/json-schema/experimental";
+import * as Instance from "@hyperjump/json-schema/instance/experimental";
 import { pointerSegments } from "@hyperjump/json-pointer";
+import * as Browser from "@hyperjump/browser";
 
 /**
- * @import {
- *   OutputFormat,
- *   OutputUnit,
- *   NormalizedError,
- *   SchemaObject
- * } from "../index.d.ts";
- * @import { SchemaDocument } from "@hyperjump/json-schema/experimental";
+ * @import { OutputUnit, Json } from "../index.d.ts"
+ * @import { AST } from "@hyperjump/json-schema/experimental"
+ * @import { JsonNode } from "@hyperjump/json-schema/instance/experimental"
  * @import { Browser as BrowserType } from "@hyperjump/browser";
+ * @import { SchemaDocument } from "@hyperjump/json-schema/experimental";
  */
 
 /**
- * @param {OutputFormat} errorOutput
- * @param {BrowserType<SchemaDocument>} schema
- * @returns {Promise<NormalizedError[]>}
+ * @typedef {{
+ *   [keywordUri: string]: {
+ *     [keywordLocation: string]: boolean | NormalizedOutput[]
+ *   }
+ * }} InstanceOutput
+ *
+ * @typedef {{
+ *   [instanceLocation: string]: InstanceOutput
+ * }} NormalizedOutput
  */
-export async function normalizeOutputFormat(errorOutput, schema) {
-  /** @type {NormalizedError[]} */
-  const output = [];
 
-  if (!errorOutput || errorOutput.valid !== false) {
-    throw new Error("error Output must follow Draft 2019-09");
+/** @type (schemaLocation: string, ast: AST, instance: JsonNode, errorIndex: ErrorIndex) => NormalizedOutput */
+const evaluateSchema = (schemaLocation, ast, instance, errorIndex) => {
+  const instanceLocation = Instance.uri(instance);
+  const schemaNode = ast[schemaLocation];
+  if (typeof schemaNode === "boolean") {
+    return {
+      [instanceLocation]: {
+        "https://json-schema.org/validation": {
+          [schemaLocation]: schemaNode
+        }
+      }
+    };
   }
 
-  if (!errorOutput.errors) {
-    throw new Error("error Output must follow Draft 2019-09");
-  }
+  /** @type NormalizedOutput */
+  const output = { [instanceLocation]: {} };
+  for (const [keywordUri, keywordLocation, keywordValue] of schemaNode) {
+    const keyword = keywordHandlers[keywordUri] ?? {};
 
-  for (const err of errorOutput.errors) {
-    await collectErrors(err, output, schema);
+    const keywordOutput = keyword.evaluate?.(keywordValue, ast, instance, errorIndex);
+    if (keyword.simpleApplicator) {
+      for (const suboutput of (keywordOutput ?? [])) {
+        mergeOutput(output, suboutput);
+      }
+    } else if (errorIndex[keywordLocation]?.[instanceLocation]) {
+      output[instanceLocation][keywordUri] ??= {};
+      output[instanceLocation][keywordUri][keywordLocation] = keywordOutput ?? false;
+    } else if (keyword.appliesTo?.(Instance.typeOf(instance)) !== false) {
+      output[instanceLocation][keywordUri] ??= {};
+      output[instanceLocation][keywordUri][keywordLocation] = !errorIndex[keywordLocation]?.[instanceLocation];
+    }
   }
 
   return output;
-}
+};
 
-/** @type {(errorOutput: OutputUnit, output: NormalizedError[], schema: BrowserType<SchemaDocument>) => Promise<void>} */
-async function collectErrors(error, output, schema) {
-  if (error.valid) return;
+/** @type (a: NormalizedOutput, b: NormalizedOutput) => void */
+const mergeOutput = (a, b) => {
+  for (const instanceLocation in b) {
+    for (const keywordUri in b[instanceLocation]) {
+      a[instanceLocation] ??= {};
+      a[instanceLocation][keywordUri] ??= {};
 
-  if (!("instanceLocation" in error) || !("absoluteKeywordLocation" in error || "keywordLocation" in error)) {
-    throw new Error("error Output must follow Draft 2019-09");
-  }
-
-  const absoluteKeywordLocation = error.absoluteKeywordLocation
-    ?? await toAbsoluteKeywordLocation(schema, /** @type string */ (error.keywordLocation));
-
-  const fragment = absoluteKeywordLocation.split("#")[1];
-  const lastSegment = fragment.split("/").filter(Boolean).pop();
-  const keywordHandler = getKeywordByName(/** @type string */ (lastSegment), schema.document.dialectId);
-
-  // make a check here to remove the schemaLocation.
-  if (lastSegment && !keywordHandler.id.startsWith("https://json-schema.org/keyword/unknown")) {
-    output.push({
-      valid: false,
-      keyword: error.keyword ?? keywordHandler.id,
-      absoluteKeywordLocation,
-      instanceLocation: normalizeInstanceLocation(error.instanceLocation)
-    });
-  }
-
-  if (error.errors) {
-    for (const nestedError of error.errors) {
-      await collectErrors(nestedError, output, schema); // Recursive
+      Object.assign(a[instanceLocation][keywordUri], b[instanceLocation][keywordUri]);
     }
   }
-}
+};
 
-/** @type {(location: string) => string} */
-function normalizeInstanceLocation(location) {
-  return location.startsWith("/") || location === "" ? `#${location}` : location;
-}
+/**
+ * @typedef {{
+ *   evaluate?(value: any, ast: AST, instance: JsonNode, errorIndex: ErrorIndex):  NormalizedOutput[]
+ *   appliesTo?(type: string): boolean;
+ *   simpleApplicator?: true;
+ * }} KeywordHandler
+ */
+
+/** @type Record<string, KeywordHandler> */
+const keywordHandlers = {};
+
+keywordHandlers["https://json-schema.org/keyword/anyOf"] = {
+  evaluate(/** @type string[] */ anyOf, ast, instance, errorIndex) {
+    /** @type NormalizedOutput[] */
+    const errors = [];
+
+    for (const schemaLocation of anyOf) {
+      errors.push(evaluateSchema(schemaLocation, ast, instance, errorIndex));
+    }
+
+    return errors;
+  }
+};
+
+keywordHandlers["https://json-schema.org/keyword/items"] = {
+  evaluate(/** @type string[] */ itemsSchemaLocation, ast, instance, errorIndex) {
+    /** @type NormalizedOutput[] */
+    const errors = [];
+    if (Instance.typeOf(instance) !== "array") {
+      return errors;
+    }
+    for (const itemNode of Instance.iter(instance)) {
+      errors.push(evaluateSchema(itemsSchemaLocation[1], ast, itemNode, errorIndex));
+    }
+    return errors;
+  },
+  simpleApplicator: true
+};
+
+keywordHandlers["https://json-schema.org/keyword/allOf"] = {
+  evaluate(/** @type string[] */ allOf, ast, instance, errorIndex) {
+    /** @type NormalizedOutput[] */
+    const errors = [];
+    for (const schemaLocation of allOf) {
+      errors.push(evaluateSchema(schemaLocation, ast, instance, errorIndex));
+    }
+
+    return errors;
+  },
+  simpleApplicator: true
+};
+
+keywordHandlers["https://json-schema.org/keyword/oneOf"] = {
+  evaluate(/** @type string[] */ oneOf, ast, instance, errorIndex) {
+    /** @type NormalizedOutput[] */
+    const errors = [];
+
+    for (const schemaLocation of oneOf) {
+      errors.push(evaluateSchema(schemaLocation, ast, instance, errorIndex));
+    }
+
+    return errors;
+  }
+};
+
+keywordHandlers["https://json-schema.org/keyword/ref"] = {
+  evaluate(/** @type string */ ref, ast, instance, errorIndex) {
+    return [evaluateSchema(ref, ast, instance, errorIndex)];
+  },
+  simpleApplicator: true
+};
+
+keywordHandlers["https://json-schema.org/keyword/properties"] = {
+  evaluate(/** @type Record<string, string> */ properties, ast, instance, errorIndex) {
+    /** @type NormalizedOutput[] */
+    const errors = [];
+
+    for (const propertyName in properties) {
+      const propertyNode = Instance.step(propertyName, instance);
+      if (!propertyNode) {
+        continue;
+      }
+
+      errors.push(evaluateSchema(properties[propertyName], ast, propertyNode, errorIndex));
+    }
+
+    return errors;
+  },
+  simpleApplicator: true
+};
+
+keywordHandlers["https://json-schema.org/keyword/definitions"] = {
+  appliesTo() {
+    return false;
+  }
+};
+
+keywordHandlers["https://json-schema.org/keyword/minLength"] = {
+  appliesTo(type) {
+    return type === "string";
+  }
+};
+
+keywordHandlers["https://json-schema.org/keyword/maxLength"] = {
+  appliesTo(type) {
+    return type === "string";
+  }
+};
+
+keywordHandlers["https://json-schema.org/keyword/minimum"] = {
+  appliesTo(type) {
+    return type === "number";
+  }
+};
+
+keywordHandlers["https://json-schema.org/keyword/maximum"] = {
+  appliesTo(type) {
+    return type === "number";
+  }
+};
+
+keywordHandlers["https://json-schema.org/keyword/pattern"] = {
+  appliesTo(type) {
+    return type === "string";
+  }
+};
+
+keywordHandlers["https://json-schema/keyword/exclusiveMinimum"] = {
+  appliesTo(type) {
+    return type === "number";
+  }
+};
+
+keywordHandlers["https://json-schema/keyword/exclusiveMaximum"] = {
+  appliesTo(type) {
+    return type === "number";
+  }
+};
+
+keywordHandlers["https://json-schema/keyword/multipleOf"] = {
+  appliesTo(type) {
+    return type === "number";
+  }
+};
+
+keywordHandlers["https://json-schema.org/keyword/maximum"] = {
+  appliesTo(type) {
+    return type === "number";
+  }
+};
+/** @typedef {Record<string, Record<string, true>>} ErrorIndex */
+
+/** @type (outputUnit: OutputUnit, schema: BrowserType<SchemaDocument>, errorIndex?: ErrorIndex) => Promise<ErrorIndex> */
+export const constructErrorIndex = async (outputUnit, schema, errorIndex = {}) => {
+  if (outputUnit.valid) {
+    return errorIndex;
+  }
+
+  for (const errorOutputUnit of outputUnit.errors ?? []) {
+    if (errorOutputUnit.valid) {
+      continue;
+    }
+    if (!("instanceLocation" in errorOutputUnit) || !("keywordLocation" in errorOutputUnit || "absoluteKeywordLocation" in errorOutputUnit)) {
+      throw new Error("error Output must follow Draft 2019-09");
+    }
+    const absoluteKeywordLocation = errorOutputUnit.absoluteKeywordLocation
+      ?? await toAbsoluteKeywordLocation(schema, /** @type string */ (errorOutputUnit.keywordLocation));
+    const instanceLocation = /** @type string */ (normalizeInstanceLocation(errorOutputUnit.instanceLocation));
+    errorIndex[absoluteKeywordLocation] ??= {};
+    errorIndex[absoluteKeywordLocation][instanceLocation] = true;
+    await constructErrorIndex(errorOutputUnit, schema, errorIndex);
+  }
+  return errorIndex;
+};
 
 /**
  * Convert keywordLocation to absoluteKeywordLocation
@@ -84,6 +256,24 @@ export async function toAbsoluteKeywordLocation(schema, keywordLocation) {
   for (const segment of pointerSegments(keywordLocation)) {
     schema = /** @type BrowserType<SchemaDocument> */ (await Browser.step(segment, schema));
   }
-
   return `${schema.document.baseUri}#${schema.cursor}`;
+}
+
+/** @type {(location: string | undefined) => string | undefined} */
+function normalizeInstanceLocation(location) {
+  return location?.startsWith("/") || location === "" ? `#${location}` : location;
+}
+
+/**
+ * @param {Json} instance
+ * @param {OutputUnit} errorOutput
+ * @param {string} subjectUri
+ * @returns {Promise<NormalizedOutput>}
+ */
+export async function normalizedErrorOuput(instance, errorOutput, subjectUri) {
+  const schema = await getSchema(subjectUri);
+  const errorIndex = await constructErrorIndex(errorOutput, schema);
+  const { schemaUri, ast } = await compile(schema);
+  const value = Instance.fromJs(instance);
+  return evaluateSchema(schemaUri, ast, value, errorIndex);
 }

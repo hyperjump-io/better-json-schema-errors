@@ -1,8 +1,7 @@
 import { afterEach, describe, expect, test } from "vitest";
-import { normalizeOutputFormat } from "./normalizeOutput.js";
+import { normalizedErrorOuput } from "./normalizeOutput.js";
 import { betterJsonSchemaErrors } from "../index.js";
 import { registerSchema, unregisterSchema } from "@hyperjump/json-schema/draft-2020-12";
-import { getSchema } from "@hyperjump/json-schema/experimental";
 /**
  * @import { OutputFormat} from "../index.d.ts"
  */
@@ -90,7 +89,6 @@ describe("Error Output Normalization", () => {
         }
       ]
     };
-
     const result = await betterJsonSchemaErrors(instance, output, schemaUri);
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minLength",
@@ -100,188 +98,220 @@ describe("Error Output Normalization", () => {
   });
 
   test("checking for the basic output format", async () => {
-    const schemaUri = "https://example.com/polygon";
     registerSchema({
       $schema: "https://json-schema.org/draft/2020-12/schema",
-      $defs: {
-        point: {
-          type: "object",
-          properties: {
-            x: { type: "number" },
-            y: { type: "number" }
-          },
-          additionalProperties: false,
-          required: ["x", "y"]
-        }
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        age: { type: "number" }
       },
-      type: "array",
-      items: { $ref: "#/$defs/point" }
+      required: ["name", "age"]
     }, schemaUri);
 
+    const instance = {
+      age: "twenty"
+    };
+    /** @type OutputFormat */
     const errorOutput = {
       valid: false,
       errors: [
         {
-          valid: false,
-          keywordLocation: "#/items/$ref",
-          absoluteKeywordLocation: "https://example.com/polygon#/$defs/point",
-          instanceLocation: "#/1",
-          error: "A subschema had errors."
+          absoluteKeywordLocation: "https://example.com/main#/required",
+          instanceLocation: "#"
         },
         {
-          valid: false,
-          keywordLocation: "#/items/$ref/required",
-          absoluteKeywordLocation: "https://example.com/polygon#/$defs/point/required",
-          instanceLocation: "#/1",
-          error: "Required property 'y' not found."
-        },
-        {
-          valid: false,
-          keywordLocation: "#/items/$ref/additionalProperties",
-          absoluteKeywordLocation: "https://example.com/polygon#/$defs/point/additionalProperties",
-          instanceLocation: "#/1/z",
-          error: "Additional property 'z' found but was invalid."
+          absoluteKeywordLocation: "https://example.com/main#/properties/age/type",
+          instanceLocation: "#/age"
         }
       ]
     };
 
-    const schema = await getSchema(schemaUri);
-    expect(await normalizeOutputFormat(errorOutput, schema)).to.eql([
-      {
-        valid: false,
-        keyword: "https://json-schema.org/keyword/required",
-        absoluteKeywordLocation: "https://example.com/polygon#/$defs/point/required",
-        instanceLocation: "#/1"
+    expect(await normalizedErrorOuput(instance, errorOutput, schemaUri)).to.eql({
+      "#": {
+        "https://json-schema.org/keyword/required": {
+          "https://example.com/main#/required": false
+        },
+        "https://json-schema.org/keyword/type": {
+          "https://example.com/main#/type": true
+        }
       },
-      {
-        valid: false,
-        keyword: "https://json-schema.org/keyword/additionalProperties",
-        absoluteKeywordLocation: "https://example.com/polygon#/$defs/point/additionalProperties",
-        instanceLocation: "#/1/z"
+      "#/age": {
+        "https://json-schema.org/keyword/type": {
+          "https://example.com/main#/properties/age/type": false
+        }
       }
-    ]);
+    });
   });
 
   test("checking for the detailed output format", async () => {
-    const schemaUri = "https://example.com/polygon";
     registerSchema({
       $schema: "https://json-schema.org/draft/2020-12/schema",
+      $id: schemaUri,
+      type: "object",
+      properties: {
+        profile: { $ref: "#/$defs/profile" }
+      },
+      required: ["profile"],
       $defs: {
-        point: {
+        profile: {
           type: "object",
           properties: {
-            x: { type: "number" },
-            y: { type: "number" }
+            name: { type: "string" },
+            age: { type: "integer" }
           },
-          additionalProperties: false,
-          required: ["x", "y"]
+          required: ["name", "age"]
         }
-      },
-      type: "array",
-      items: { $ref: "#/$defs/point" }
+      }
     }, schemaUri);
-
+    const instance = {
+      profile: {
+        name: 123
+      }
+    };
+    /** @type OutputFormat */
     const errorOutput = {
       valid: false,
-      keywordLocation: "#",
-      instanceLocation: "#",
       errors: [
         {
-          valid: false,
-          keywordLocation: "#/items/$ref",
-          absoluteKeywordLocation: "https://example.com/polygon#/$defs/point",
-          instanceLocation: "#/1",
+          absoluteKeywordLocation: "https://example.com/main#/$defs/profile",
+          instanceLocation: "/profile",
           errors: [
             {
-              valid: false,
-              keywordLocation: "#/items/$ref/required",
-              absoluteKeywordLocation: "https://example.com/polygon#/$defs/point/required",
-              instanceLocation: "#/1",
-              error: "Required property 'y' not found."
+              absoluteKeywordLocation: "https://example.com/main#/$defs/profile/properties/name/type",
+              instanceLocation: "/profile/name"
             },
             {
-              valid: false,
-              keywordLocation: "#/items/$ref/additionalProperties",
-              absoluteKeywordLocation: "https://example.com/polygon#/$defs/point/additionalProperties",
-              instanceLocation: "#/1/z",
-              error: "Additional property 'z' found but was invalid."
+              absoluteKeywordLocation: "https://example.com/main#/$defs/profile/required",
+              instanceLocation: "/profile"
             }
           ]
         }
       ]
     };
 
-    const schema = await getSchema(schemaUri);
-    expect(await normalizeOutputFormat(errorOutput, schema)).to.eql([
-      {
-        valid: false,
-        keyword: "https://json-schema.org/keyword/required",
-        absoluteKeywordLocation: "https://example.com/polygon#/$defs/point/required",
-        instanceLocation: "#/1"
+    expect(await normalizedErrorOuput(instance, errorOutput, schemaUri)).to.eql({
+      "#": {
+        "https://json-schema.org/keyword/required": {
+          "https://example.com/main#/required": true
+        },
+        "https://json-schema.org/keyword/type": {
+          "https://example.com/main#/type": true
+        }
       },
-      {
-        valid: false,
-        keyword: "https://json-schema.org/keyword/additionalProperties",
-        absoluteKeywordLocation: "https://example.com/polygon#/$defs/point/additionalProperties",
-        instanceLocation: "#/1/z"
+      "#/profile": {
+        "https://json-schema.org/keyword/required": {
+          "https://example.com/main#/$defs/profile/required": false
+        },
+        "https://json-schema.org/keyword/type": {
+          "https://example.com/main#/$defs/profile/type": true
+        }
+      },
+      "#/profile/name": {
+        "https://json-schema.org/keyword/type": {
+          "https://example.com/main#/$defs/profile/properties/name/type": false
+        }
       }
-    ]);
+    });
   });
 
   test("checking for the verbose output format", async () => {
     registerSchema({
       $schema: "https://json-schema.org/draft/2020-12/schema",
+      $id: schemaUri,
       type: "object",
-      properties: {},
-      additionalProperties: false
+      properties: {
+        profile: { $ref: "#/$defs/profile" }
+      },
+      required: ["profile"],
+      $defs: {
+        profile: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            age: { type: "integer" }
+          },
+          required: ["name", "age"]
+        }
+      }
     }, schemaUri);
 
+    const instance = {
+      profile: {
+        name: 123
+      }
+    };
+    /** @type {OutputFormat} */
     const errorOutput = {
       valid: false,
-      keywordLocation: "#",
-      instanceLocation: "#",
+      keywordLocation: "",
+      instanceLocation: "",
       errors: [
         {
           valid: true,
-          absoluteKeywordLocation: "https://example.com/main4#/type",
-          instanceLocation: "#"
-        },
-        {
-          valid: true,
-          absoluteKeywordLocation: "https://example.com/main4#/properties",
-          instanceLocation: "#"
+          keywordLocation: "/type",
+          instanceLocation: ""
         },
         {
           valid: false,
-          absoluteKeywordLocation: "https://example.com/main4#/additionalProperties",
-          instanceLocation: "#",
+          keywordLocation: "/properties/profile/$ref",
+          absoluteKeywordLocation: "https://example.com/main#/$defs/profile",
+          instanceLocation: "/profile",
           errors: [
             {
+              valid: true,
+              keywordLocation: "/properties/profile/$ref/type",
+              instanceLocation: "/profile"
+            },
+            {
+              valid: true,
+              keywordLocation: "/properties/profile/$ref/properties",
+              instanceLocation: "/profile"
+            },
+            {
               valid: false,
-              absoluteKeywordLocation: "https://example.com/main4#/additionalProperties",
-              instanceLocation: "#/disallowedProp",
-              error: "Additional property 'disallowedProp' found but was invalid."
+              keywordLocation: "/properties/profile/$ref/properties/name/type",
+              absoluteKeywordLocation: "https://example.com/main#/$defs/profile/properties/name/type",
+              instanceLocation: "/profile/name"
+            },
+            {
+              valid: false,
+              keywordLocation: "/properties/profile/$ref/required",
+              absoluteKeywordLocation: "https://example.com/main#/$defs/profile/required",
+              instanceLocation: "/profile"
             }
           ]
+        },
+        {
+          valid: true,
+          keywordLocation: "/required",
+          instanceLocation: ""
         }
       ]
     };
 
-    const schema = await getSchema(schemaUri);
-    expect(await normalizeOutputFormat(errorOutput, schema)).to.eql([
-      {
-        valid: false,
-        keyword: "https://json-schema.org/keyword/additionalProperties",
-        absoluteKeywordLocation: "https://example.com/main4#/additionalProperties",
-        instanceLocation: "#"
+    expect(await normalizedErrorOuput(instance, errorOutput, schemaUri)).to.eql({
+      "#": {
+        "https://json-schema.org/keyword/required": {
+          "https://example.com/main#/required": true
+        },
+        "https://json-schema.org/keyword/type": {
+          "https://example.com/main#/type": true
+        }
       },
-      {
-        valid: false,
-        keyword: "https://json-schema.org/keyword/additionalProperties",
-        absoluteKeywordLocation: "https://example.com/main4#/additionalProperties",
-        instanceLocation: "#/disallowedProp"
+      "#/profile": {
+        "https://json-schema.org/keyword/required": {
+          "https://example.com/main#/$defs/profile/required": false
+        },
+        "https://json-schema.org/keyword/type": {
+          "https://example.com/main#/$defs/profile/type": true
+        }
+      },
+      "#/profile/name": {
+        "https://json-schema.org/keyword/type": {
+          "https://example.com/main#/$defs/profile/properties/name/type": false
+        }
       }
-    ]);
+    });
   });
 
   test("when error output doesnot contain any of these three keyword (valid, absoluteKeywordLocation, instanceLocation)", async () => {
@@ -294,7 +324,7 @@ describe("Error Output Normalization", () => {
         }
       }
     }, schemaUri);
-
+    const instance = "";
     const errorOutput = {
       valid: false,
       errors: [
@@ -304,9 +334,7 @@ describe("Error Output Normalization", () => {
         }
       ]
     };
-
-    const schema = await getSchema(schemaUri);
-    await expect(async () => normalizeOutputFormat(/** @type any */(errorOutput), schema)).to.rejects.toThrow("error Output must follow Draft 2019-09");
+    await expect(async () => normalizedErrorOuput(instance, /** @type any */(errorOutput), schemaUri)).to.rejects.toThrow("error Output must follow Draft 2019-09");
   });
 
   test("correctly resolves keywordLocation through $ref in $defs", async () => {
@@ -328,66 +356,18 @@ describe("Error Output Normalization", () => {
       errors: [
         {
           keywordLocation: "/properties/foo/$ref/minLength",
-          instanceLocation: "#"
+          instanceLocation: "#/foo"
         }
       ]
     };
+
     const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+
     expect(result.errors).to.eql([
       {
         schemaLocation: "https://example.com/main#/$defs/lengthDefinition/minLength",
-        instanceLocation: "#",
+        instanceLocation: "#/foo",
         message: "The instance should be at least 3 characters"
-      }
-    ]);
-  });
-
-  test("removes schemaLocation nodes from the error output", async () => {
-    registerSchema({
-      $schema: "https://json-schema.org/draft/2020-12/schema",
-      $defs: {
-        point: {
-          type: "object",
-          properties: {
-            x: { type: "number" },
-            y: { type: "number" }
-          },
-          additionalProperties: false,
-          required: ["x", "y"]
-        }
-      },
-      type: "array",
-      items: { $ref: "#/$defs/point" },
-      minItems: 3
-    }, schemaUri);
-
-    const errorOutput = {
-      valid: false,
-      errors: [
-        {
-          valid: false,
-          keywordLocation: "#/items/$ref",
-          absoluteKeywordLocation: "https://example.com/polygon#/$defs/point",
-          instanceLocation: "#/1",
-          error: "A subschema had errors."
-        },
-        {
-          valid: false,
-          keywordLocation: "#/items/$ref/required",
-          absoluteKeywordLocation: "https://example.com/polygon#/$defs/point/required",
-          instanceLocation: "#/1",
-          error: "Required property 'y' not found."
-        }
-      ]
-    };
-
-    const schema = await getSchema(schemaUri);
-    expect(await normalizeOutputFormat(errorOutput, schema)).to.eql([
-      {
-        valid: false,
-        keyword: "https://json-schema.org/keyword/required",
-        absoluteKeywordLocation: "https://example.com/polygon#/$defs/point/required",
-        instanceLocation: "#/1"
       }
     ]);
   });

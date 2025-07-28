@@ -1,300 +1,99 @@
-import { normalizeOutputFormat } from "./normalizeOutputFormat/normalizeOutput.js";
 import * as Schema from "@hyperjump/browser";
-import { getKeywordByName, getSchema } from "@hyperjump/json-schema/experimental";
-import * as Instance from "@hyperjump/json-pointer";
+import { getSchema } from "@hyperjump/json-schema/experimental";
+import * as Instance from "@hyperjump/json-schema/instance/experimental";
 import leven from "leven";
+import { normalizedErrorOuput } from "./normalizeOutputFormat/normalizeOutput.js";
 
 /**
  * @import { Browser } from "@hyperjump/browser";
  * @import { SchemaDocument } from "@hyperjump/json-schema/experimental";
+ * @import { JsonNode } from "@hyperjump/json-schema/instance/experimental";
  * @import { Json } from "@hyperjump/json-pointer";
  * @import {betterJsonSchemaErrors, NormalizedError, OutputUnit, BetterJsonSchemaErrors, ErrorObject } from "./index.d.ts"
+ * @import { NormalizedOutput, InstanceOutput } from "./normalizeOutputFormat/normalizeOutput.js"
  */
 
 /** @type betterJsonSchemaErrors */
 export async function betterJsonSchemaErrors(instance, errorOutput, schemaUri) {
-  const schema = await getSchema(schemaUri);
-  const normalizedErrors = await normalizeOutputFormat(errorOutput, schema);
-  /** @type BetterJsonSchemaErrors */
-  const output = { errors: [] };
+  const normalizedErrors = await normalizedErrorOuput(instance, errorOutput, schemaUri);
+  const rootInstance = Instance.fromJs(instance);
+  return { errors: await getErrors(normalizedErrors, rootInstance) };
+}
 
-  for (const errorHandler of errorHandlers) {
-    const errorObject = await errorHandler(normalizedErrors, instance, schema);
-    if (errorObject) {
-      output.errors.push(...errorObject);
+/** @type (normalizedErrors: NormalizedOutput, rootInstance: JsonNode) => Promise<ErrorObject[]> */
+const getErrors = async (normalizedErrors, rootInstance) => {
+  /** @type ErrorObject[] */
+  const errors = [];
+
+  for (const instanceLocation in normalizedErrors) {
+    const instance = Instance.get(instanceLocation, rootInstance);
+    for (const errorHandler of errorHandlers) {
+      const errorObject = await errorHandler(normalizedErrors[instanceLocation], /** @type JsonNode */ (instance));
+      if (errorObject) {
+        errors.push(...errorObject);
+      }
     }
   }
 
-  return output;
-}
+  return errors;
+};
 
 /**
- * @typedef {(normalizedErrors: NormalizedError[], instance: Json, schema: Browser<SchemaDocument>) => Promise<ErrorObject[]>} ErrorHandler
+ * @typedef {(normalizedErrors: InstanceOutput, instance: JsonNode) => Promise<ErrorObject[]>} ErrorHandler
  */
 
 /** @type ErrorHandler[] */
 const errorHandlers = [
 
-  // `anyOf` handler
-  async (normalizedErrors, instance, schema) => {
+  async (normalizedErrors, instance) => {
     /** @type ErrorObject[] */
     const errors = [];
 
-    for (const error of normalizedErrors) {
-      if (error.keyword === "https://json-schema.org/keyword/anyOf") {
-        const anyOfSchema = await getSchema(error.absoluteKeywordLocation);
-        const numberOfAlternatives = Schema.length(anyOfSchema);
-        // const discriminatorKeys = await findDiscriminatorKeywords(anyOfSchema);
-        const outputArray = applicatorChildErrors(error.absoluteKeywordLocation, normalizedErrors);
-
-        const keyword = getKeywordByName("type", schema.document.dialectId);
-        const matchingKeywordErrors = outputArray.filter((e) => e.keyword === keyword.id);
-
-        if (isOnlyOneTypeValid(matchingKeywordErrors, numberOfAlternatives)) {
-          // all the matchingKeywordErrors are filter out from the outputArray and push in the normalizedErrors array to produce the output.
-          const remainingErrors = outputArray.filter((err) => {
-            return !matchingKeywordErrors.some((matchingErr) => {
-              return matchingErr.absoluteKeywordLocation === err.absoluteKeywordLocation;
-            });
-          });
-          normalizedErrors.push(...remainingErrors);
-        } else if (matchingKeywordErrors.length === numberOfAlternatives) {
-          const noMatchFound = await noDiscriminatorKeyMatchError(matchingKeywordErrors, error, instance);
-          errors.push(noMatchFound);
-        } else if (false) {
-          // Discriminator cases
-        } else if (jsonTypeOf(instance) === "object") {
-          // Number of matching properties
-          const selectedAlternative = outputArray.find((error) => {
-            return error.keyword = "https://json-schema.org/keyword/properties";
-          })?.absoluteKeywordLocation;
-          const remainingErrors = outputArray.filter((err) => {
-            return err.absoluteKeywordLocation.startsWith(/** @type string */ (selectedAlternative));
-          });
-          normalizedErrors.push(...remainingErrors);
-        } else {
-          // I don't know yet what to do
-
-          // {
-          //   "$schema": "https://json-schema.org/draft/2020-12/schema",
-          //   "anyOf": [
-          //     { "required": [ "foo" ] },
-          //     { "required": [ "bar" ] }
-          //   ]
-          // }
+    if (normalizedErrors["https://json-schema.org/keyword/anyOf"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/anyOf"]) {
+        /** @type NormalizedOutput[] */
+        const alternatives = [];
+        const allAlternatives = /** @type NormalizedOutput[] */ (normalizedErrors["https://json-schema.org/keyword/anyOf"][schemaLocation]);
+        for (const alternative of allAlternatives) {
+          if (Object.values(alternative[Instance.uri(instance)]["https://json-schema.org/keyword/type"]).every((valid) => valid)) {
+            alternatives.push(alternative);
+          }
         }
-      }
-    }
-    return errors;
-  },
+        // case 1 where no. alternative matched the type of the instance.
+        if (alternatives.length === 0) {
+          /** @type Set<string> */
+          const expectedTypes = new Set();
 
-  async (normalizedErrors) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-    for (const error of normalizedErrors) {
-      if (error.keyword === "https://json-schema.org/keyword/minLength") {
-        const keyword = await getSchema(error.absoluteKeywordLocation);
-        errors.push({
-          message: `The instance should be at least ${Schema.value(keyword)} characters`,
-          instanceLocation: error.instanceLocation,
-          schemaLocation: error.absoluteKeywordLocation
-        });
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizeErrors) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-    for (const error of normalizeErrors) {
-      if (error.keyword === "https://json-schema.org/keyword/maxLength") {
-        const keyword = await getSchema(error.absoluteKeywordLocation);
-        errors.push({
-          message: `The instance should be atmost ${Schema.value(keyword)} characters long.`,
-          instanceLocation: error.instanceLocation,
-          schemaLocation: error.absoluteKeywordLocation
-        });
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizeErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-    for (const error of normalizeErrors) {
-      if (error.keyword === "https://json-schema.org/keyword/type") {
-        const keyword = await getSchema(error.absoluteKeywordLocation);
-        const pointer = error.instanceLocation.replace(/^#/, "");
-        const actualValue = Instance.get(pointer, instance);
-        errors.push({
-          message: `The instance should be of type "${Schema.value(keyword)}" but found "${typeof actualValue}".`,
-          instanceLocation: error.instanceLocation,
-          schemaLocation: error.absoluteKeywordLocation
-        });
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizeErrors) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-    for (const error of normalizeErrors) {
-      if (error.keyword === "https://json-schema.org/keyword/maximum") {
-        const keyword = await getSchema(error.absoluteKeywordLocation);
-        errors.push({
-          message: `The instance should be less than or equal to ${Schema.value(keyword)}.`,
-          instanceLocation: error.instanceLocation,
-          schemaLocation: error.absoluteKeywordLocation
-        });
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizeErrors) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-    for (const error of normalizeErrors) {
-      if (error.keyword === "https://json-schema.org/keyword/minimum") {
-        const keyword = await getSchema(error.absoluteKeywordLocation);
-        errors.push({
-          message: `The instance should be greater than or equal to ${Schema.value(keyword)}.`,
-          instanceLocation: error.instanceLocation,
-          schemaLocation: error.absoluteKeywordLocation
-        });
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizeErrors) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-    for (const error of normalizeErrors) {
-      if (error.keyword === "https://json-schema.org/keyword/exclusiveMinimum") {
-        const keyword = await getSchema(error.absoluteKeywordLocation);
-        errors.push({
-          message: `The instance should be greater than ${Schema.value(keyword)}.`,
-          instanceLocation: error.instanceLocation,
-          schemaLocation: error.absoluteKeywordLocation
-        });
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizeErrors) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-    for (const error of normalizeErrors) {
-      if (error.keyword === "https://json-schema.org/keyword/exclusiveMaximum") {
-        const keyword = await getSchema(error.absoluteKeywordLocation);
-        errors.push({
-          message: `The instance should be less than ${Schema.value(keyword)}.`,
-          instanceLocation: error.instanceLocation,
-          schemaLocation: error.absoluteKeywordLocation
-        });
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizeErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-    for (const error of normalizeErrors) {
-      if (error.keyword === "https://json-schema.org/keyword/required") {
-        const keyword = await getSchema(error.absoluteKeywordLocation);
-        /** @type {Set<string>} */
-        const required = new Set(Schema.value(keyword));
-        const pointer = error.instanceLocation.replace(/^#/, "");
-        const object = /** @type Object */ (Instance.get(pointer, instance));
-        for (const propertyName of Object.keys(object)) {
-          required.delete(propertyName);
+          for (const alternative of allAlternatives) {
+            for (const instanceLocation in alternative) {
+              if (instanceLocation === Instance.uri(instance)) {
+                for (const schemaLocation in alternative[instanceLocation]["https://json-schema.org/keyword/type"]) {
+                  const keyword = await getSchema(schemaLocation);
+                  const expectedType = /** @type string */ (Schema.value(keyword));
+                  expectedTypes.add(expectedType);
+                }
+              }
+            }
+          }
+          errors.push({
+            message: `The instance must be a ${[...expectedTypes].join(", ")}. Found '${Instance.typeOf(instance)}'.`,
+            instanceLocation: Instance.uri(instance),
+            schemaLocation: schemaLocation
+          });
+        } else if (alternatives.length === 1) {
+          return getErrors(alternatives[0], instance);
         }
-        errors.push({
-          message: `"${error.instanceLocation}" is missing required property(s): ${[...required].join(", ")}.`,
-          instanceLocation: error.instanceLocation,
-          schemaLocation: error.absoluteKeywordLocation
-        });
-      }
-    }
 
-    return errors;
-  },
-
-  async (normalizedErrors) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-    for (const error of normalizedErrors) {
-      if (error.keyword === "https://json-schema.org/keyword/multipleOf") {
-        const keyword = await getSchema(error.absoluteKeywordLocation);
-        errors.push({
-          message: `The instance should be of multiple of ${Schema.value(keyword)}.`,
-          instanceLocation: error.instanceLocation,
-          schemaLocation: error.absoluteKeywordLocation
-        });
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizedErrors) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-    for (const error of normalizedErrors) {
-      if (error.keyword === "https://json-schema.org/keyword/maxProperties") {
-        const keyword = await getSchema(error.absoluteKeywordLocation);
-        errors.push({
-          message: `The instance should have maximum ${Schema.value(keyword)} properties.`,
-          instanceLocation: error.instanceLocation,
-          schemaLocation: error.absoluteKeywordLocation
-        });
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizedErrors) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-    for (const error of normalizedErrors) {
-      if (error.keyword === "https://json-schema.org/keyword/minProperties") {
-        const keyword = await getSchema(error.absoluteKeywordLocation);
-        errors.push({
-          message: `The instance should have minimum ${Schema.value(keyword)} properties.`,
-          instanceLocation: error.instanceLocation,
-          schemaLocation: error.absoluteKeywordLocation
-        });
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizedErrors) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-    for (const error of normalizedErrors) {
-      if (error.keyword === "https://json-schema.org/keyword/const") {
-        const keyword = await getSchema(error.absoluteKeywordLocation);
-        errors.push({
-          message: `The instance should be equal to ${Schema.value(keyword)}.`,
-          instanceLocation: error.instanceLocation,
-          schemaLocation: error.absoluteKeywordLocation
-        });
+        // const anyOfSchema = await getSchema(schemaLocation);
+        // const numberOfAlternatives = Schema.length(anyOfSchema);
+        // Instance.typeOf(instance);
+        // const instance = Instance.fromJs(instance)
+        // if(numberOfAlternatives == )
+        // errors.push({
+        //   message: `The instance should be at least ${Schema.value(keyword)} characters`,
+        //   instanceLocation: Instance.uri(instance),
+        //   schemaLocation: schemaLocation
+        // });
       }
     }
 
@@ -304,187 +103,393 @@ const errorHandlers = [
   async (normalizedErrors, instance) => {
     /** @type ErrorObject[] */
     const errors = [];
-    for (const error of normalizedErrors) {
-      if (error.keyword === "https://json-schema.org/keyword/enum") {
-        const keyword = await getSchema(error.absoluteKeywordLocation);
 
-        /** @type {Array<string>} */
-        const allowedValues = Schema.value(keyword);
-        const pointer = error.instanceLocation.replace(/^#/, "");
-        const currentValue = /** @type {string} */ (Instance.get(pointer, instance));
-
-        const bestMatch = allowedValues
-          .map((value) => ({
-            value,
-            weight: leven(value, currentValue)
-          }))
-          .sort((a, b) => a.weight - b.weight)[0];
-
-        let suggestion = "";
-        if (
-          allowedValues.length === 1
-          || (bestMatch && bestMatch.weight < bestMatch.value.length)
-        ) {
-          suggestion = ` Did you mean "${bestMatch.value}"?`;
+    if (normalizedErrors["https://json-schema.org/keyword/minLength"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/minLength"]) {
+        if (!normalizedErrors["https://json-schema.org/keyword/minLength"][schemaLocation]) {
+          const keyword = await getSchema(schemaLocation);
           errors.push({
-            message: `Unexpected value "${currentValue}". ${suggestion}`,
-            instanceLocation: error.instanceLocation,
-            schemaLocation: error.absoluteKeywordLocation
+            message: `The instance should be at least ${Schema.value(keyword)} characters`,
+            instanceLocation: Instance.uri(instance),
+            schemaLocation: schemaLocation
           });
-          continue;
         }
-
-        errors.push({
-          message: `Unexpected value "${currentValue}". Expected one of: ${allowedValues.join(",")}.`,
-          instanceLocation: error.instanceLocation,
-          schemaLocation: error.absoluteKeywordLocation
-        });
       }
     }
+
     return errors;
   },
 
-  async (normalizedErrors) => {
+  async (normalizedErrors, instance) => {
     /** @type ErrorObject[] */
     const errors = [];
-    for (const error of normalizedErrors) {
-      if (error.keyword === "https://json-schema.org/keyword/maxItems") {
-        const keyword = await getSchema(error.absoluteKeywordLocation);
-        errors.push({
-          // can improve this by adding the how many items are more in the arrary and for unique what are the duplicate items.
-          message: `The instance should contain maximum ${Schema.value(keyword)} items in the array.`,
-          instanceLocation: error.instanceLocation,
-          schemaLocation: error.absoluteKeywordLocation
-        });
+
+    if (normalizedErrors["https://json-schema.org/keyword/maxLength"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/maxLength"]) {
+        if (!normalizedErrors["https://json-schema.org/keyword/maxLength"][schemaLocation]) {
+          const keyword = await getSchema(schemaLocation);
+          errors.push({
+            message: `The instance should be atmost ${Schema.value(keyword)} characters long.`,
+            instanceLocation: Instance.uri(instance),
+            schemaLocation: schemaLocation
+          });
+        }
       }
     }
+
     return errors;
   },
 
-  async (normalizedErrors) => {
+  async (normalizedErrors, instance) => {
     /** @type ErrorObject[] */
     const errors = [];
-    for (const error of normalizedErrors) {
-      if (error.keyword === "https://json-schema.org/keyword/minItems") {
-        const keyword = await getSchema(error.absoluteKeywordLocation);
-        errors.push({
-          message: `The instance should contain minimum ${Schema.value(keyword)} items in the array.`,
-          instanceLocation: error.instanceLocation,
-          schemaLocation: error.absoluteKeywordLocation
-        });
+
+    if (normalizedErrors["https://json-schema.org/keyword/type"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/type"]) {
+        if (!normalizedErrors["https://json-schema.org/keyword/type"][schemaLocation]) {
+          const keyword = await getSchema(schemaLocation);
+          errors.push({
+            message: `The instance should be of type "${Schema.value(keyword)}" but found "${Instance.typeOf(instance)}".`,
+            instanceLocation: Instance.uri(instance),
+            schemaLocation: schemaLocation
+          });
+        }
       }
     }
+
+    return errors;
+  },
+
+  async (normalizedErrors, instance) => {
+    /** @type ErrorObject[] */
+    const errors = [];
+
+    if (normalizedErrors["https://json-schema.org/keyword/maximum"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/maximum"]) {
+        if (!normalizedErrors["https://json-schema.org/keyword/maximum"][schemaLocation]) {
+          const keyword = await getSchema(schemaLocation);
+          errors.push({
+            message: `The instance should be less than or equal to ${Schema.value(keyword)}.`,
+            instanceLocation: Instance.uri(instance),
+            schemaLocation: schemaLocation
+          });
+        }
+      }
+    }
+
+    return errors;
+  },
+
+  async (normalizedErrors, instance) => {
+    /** @type ErrorObject[] */
+    const errors = [];
+
+    if (normalizedErrors["https://json-schema.org/keyword/minimum"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/minimum"]) {
+        if (!normalizedErrors["https://json-schema.org/keyword/minimum"][schemaLocation]) {
+          const keyword = await getSchema(schemaLocation);
+          errors.push({
+            message: `The instance should be greater than or equal to ${Schema.value(keyword)}.`,
+            instanceLocation: Instance.uri(instance),
+            schemaLocation: schemaLocation
+          });
+        }
+      }
+    }
+
+    return errors;
+  },
+
+  async (normalizedErrors, instance) => {
+    /** @type ErrorObject[] */
+    const errors = [];
+
+    if (normalizedErrors["https://json-schema.org/keyword/exclusiveMinimum"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/exclusiveMinimum"]) {
+        if (!normalizedErrors["https://json-schema.org/keyword/exclusiveMinimum"][schemaLocation]) {
+          const keyword = await getSchema(schemaLocation);
+          errors.push({
+            message: `The instance should be greater than ${Schema.value(keyword)}.`,
+            instanceLocation: Instance.uri(instance),
+            schemaLocation: schemaLocation
+          });
+        }
+      }
+    }
+
+    return errors;
+  },
+
+  async (normalizedErrors, instance) => {
+    /** @type ErrorObject[] */
+    const errors = [];
+
+    if (normalizedErrors["https://json-schema.org/keyword/exclusiveMaximum"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/exclusiveMaximum"]) {
+        if (!normalizedErrors["https://json-schema.org/keyword/exclusiveMaximum"][schemaLocation]) {
+          const keyword = await getSchema(schemaLocation);
+          errors.push({
+            message: `The instance should be less than ${Schema.value(keyword)}.`,
+            instanceLocation: Instance.uri(instance),
+            schemaLocation: schemaLocation
+          });
+        }
+      }
+    }
+
+    return errors;
+  },
+
+  async (normalizedErrors, instance) => {
+    /** @type ErrorObject[] */
+    const errors = [];
+
+    if (normalizedErrors["https://json-schema.org/keyword/required"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/required"]) {
+        if (!normalizedErrors["https://json-schema.org/keyword/required"][schemaLocation]) {
+          const keyword = await getSchema(schemaLocation);
+          /** @type Set<string> */
+          const required = new Set(Schema.value(keyword));
+          for (const propertyName in Instance.value(instance)) {
+            required.delete(propertyName);
+          }
+          errors.push({
+            message: `"${Instance.uri(instance)}" is missing required property(s): ${[...required].join(", ")}.`,
+            instanceLocation: Instance.uri(instance),
+            schemaLocation: schemaLocation
+          });
+        }
+      }
+    }
+
+    return errors;
+  },
+
+  async (normalizedErrors, instance) => {
+    /** @type ErrorObject[] */
+    const errors = [];
+
+    if (normalizedErrors["https://json-schema.org/keyword/multipleOf"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/multipleOf"]) {
+        if (!normalizedErrors["https://json-schema.org/keyword/multipleOf"][schemaLocation]) {
+          const keyword = await getSchema(schemaLocation);
+          errors.push({
+            message: `The instance should be of multiple of ${Schema.value(keyword)}.`,
+            instanceLocation: Instance.uri(instance),
+            schemaLocation: schemaLocation
+          });
+        }
+      }
+    }
+
+    return errors;
+  },
+
+  async (normalizedErrors, instance) => {
+    /** @type ErrorObject[] */
+    const errors = [];
+
+    if (normalizedErrors["https://json-schema.org/keyword/maxProperties"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/maxProperties"]) {
+        if (!normalizedErrors["https://json-schema.org/keyword/maxProperties"][schemaLocation]) {
+          const keyword = await getSchema(schemaLocation);
+          errors.push({
+            message: `The instance should have maximum ${Schema.value(keyword)} properties.`,
+            instanceLocation: Instance.uri(instance),
+            schemaLocation: schemaLocation
+          });
+        }
+      }
+    }
+
+    return errors;
+  },
+
+  async (normalizedErrors, instance) => {
+    /** @type ErrorObject[] */
+    const errors = [];
+
+    if (normalizedErrors["https://json-schema.org/keyword/minProperties"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/minProperties"]) {
+        if (!normalizedErrors["https://json-schema.org/keyword/minProperties"][schemaLocation]) {
+          const keyword = await getSchema(schemaLocation);
+          errors.push({
+            message: `The instance should have minimum ${Schema.value(keyword)} properties.`,
+            instanceLocation: Instance.uri(instance),
+            schemaLocation: schemaLocation
+          });
+        }
+      }
+    }
+
+    return errors;
+  },
+
+  async (normalizedErrors, instance) => {
+    /** @type ErrorObject[] */
+    const errors = [];
+
+    if (normalizedErrors["https://json-schema.org/keyword/const"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/const"]) {
+        if (!normalizedErrors["https://json-schema.org/keyword/const"][schemaLocation]) {
+          const keyword = await getSchema(schemaLocation);
+          errors.push({
+            message: `The instance should be equal to ${Schema.value(keyword)}.`,
+            instanceLocation: Instance.uri(instance),
+            schemaLocation: schemaLocation
+          });
+        }
+      }
+    }
+
+    return errors;
+  },
+
+  async (normalizedErrors, instance) => {
+    /** @type ErrorObject[] */
+    const errors = [];
+
+    if (normalizedErrors["https://json-schema.org/keyword/enum"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/enum"]) {
+        if (!normalizedErrors["https://json-schema.org/keyword/enum"][schemaLocation]) {
+          const keyword = await getSchema(schemaLocation);
+
+          /** @type {Array<string>} */
+          const allowedValues = Schema.value(keyword);
+          const currentValue = /** @type {string} */ (Instance.value(instance));
+
+          const bestMatch = allowedValues
+            .map((value) => ({
+              value,
+              weight: leven(value, currentValue)
+            }))
+            .sort((a, b) => a.weight - b.weight)[0];
+
+          let suggestion = "";
+          if (
+            allowedValues.length === 1
+            || (bestMatch && bestMatch.weight < bestMatch.value.length)
+          ) {
+            suggestion = ` Did you mean "${bestMatch.value}"?`;
+            errors.push({
+              message: `Unexpected value "${currentValue}". ${suggestion}`,
+              instanceLocation: Instance.uri(instance),
+              schemaLocation: schemaLocation
+            });
+            continue;
+          }
+
+          errors.push({
+            message: `Unexpected value "${currentValue}". Expected one of: ${allowedValues.join(",")}.`,
+            instanceLocation: Instance.uri(instance),
+            schemaLocation: schemaLocation
+          });
+        }
+      }
+    }
+
+    return errors;
+  },
+
+  async (normalizedErrors, instance) => {
+    /** @type ErrorObject[] */
+    const errors = [];
+
+    if (normalizedErrors["https://json-schema.org/keyword/maxItems"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/maxItems"]) {
+        if (!normalizedErrors["https://json-schema.org/keyword/maxItems"][schemaLocation]) {
+          const keyword = await getSchema(schemaLocation);
+          errors.push({
+            message: `The instance should contain maximum ${Schema.value(keyword)} items in the array.`,
+            instanceLocation: Instance.uri(instance),
+            schemaLocation: schemaLocation
+          });
+        }
+      }
+    }
+
+    return errors;
+  },
+
+  async (normalizedErrors, instance) => {
+    /** @type ErrorObject[] */
+    const errors = [];
+
+    if (normalizedErrors["https://json-schema.org/keyword/minItems"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/minItems"]) {
+        if (!normalizedErrors["https://json-schema.org/keyword/minItems"][schemaLocation]) {
+          const keyword = await getSchema(schemaLocation);
+          errors.push({
+            message: `The instance should contain minimum ${Schema.value(keyword)} items in the array.`,
+            instanceLocation: Instance.uri(instance),
+            schemaLocation: schemaLocation
+          });
+        }
+      }
+    }
+
     return errors;
   },
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async (normalizedErrors) => {
+  async (normalizedErrors, instance) => {
     /** @type ErrorObject[] */
     const errors = [];
-    for (const error of normalizedErrors) {
-      if (error.keyword === "https://json-schema.org/keyword/uniqueItems") {
-        errors.push({
-          message: `The instance should have unique items in the array.`,
-          instanceLocation: error.instanceLocation,
-          schemaLocation: error.absoluteKeywordLocation
-        });
+
+    if (normalizedErrors["https://json-schema.org/keyword/uniqueItems"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/uniqueItems"]) {
+        if (!normalizedErrors["https://json-schema.org/keyword/uniqueItems"][schemaLocation]) {
+          errors.push({
+            message: `The instance should have unique items in the array.`,
+            instanceLocation: Instance.uri(instance),
+            schemaLocation: schemaLocation
+          });
+        }
       }
     }
+
     return errors;
   },
 
-  async (normalizedErrors) => {
+  async (normalizedErrors, instance) => {
     /** @type ErrorObject[] */
     const errors = [];
-    for (const error of normalizedErrors) {
-      if (error.keyword === "https://json-schema.org/keyword/format") {
-        const keyword = await getSchema(error.absoluteKeywordLocation);
-        errors.push({
-          message: `The instance should match the format: ${Schema.value(keyword)}.`,
-          instanceLocation: error.instanceLocation,
-          schemaLocation: error.absoluteKeywordLocation
-        });
+
+    if (normalizedErrors["https://json-schema.org/keyword/format"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/format"]) {
+        if (!normalizedErrors["https://json-schema.org/keyword/format"][schemaLocation]) {
+          const keyword = await getSchema(schemaLocation);
+          errors.push({
+            message: `The instance should match the format: ${Schema.value(keyword)}.`,
+            instanceLocation: Instance.uri(instance),
+            schemaLocation: schemaLocation
+          });
+        }
       }
     }
+
     return errors;
   },
-
-  async (normalizedErrors) => {
+  async (normalizedErrors, instance) => {
     /** @type ErrorObject[] */
     const errors = [];
-    for (const error of normalizedErrors) {
-      if (error.keyword === "https://json-schema.org/keyword/pattern") {
-        const keyword = await getSchema(error.absoluteKeywordLocation);
-        errors.push({
-          message: `The instance should match the pattern: ${Schema.value(keyword)}.`,
-          instanceLocation: error.instanceLocation,
-          schemaLocation: error.absoluteKeywordLocation
-        });
+
+    if (normalizedErrors["https://json-schema.org/keyword/pattern"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/pattern"]) {
+        if (!normalizedErrors["https://json-schema.org/keyword/pattern"][schemaLocation]) {
+          const keyword = await getSchema(schemaLocation);
+          errors.push({
+            message: `The instance should match the pattern: ${Schema.value(keyword)}.`,
+            instanceLocation: Instance.uri(instance),
+            schemaLocation: schemaLocation
+          });
+        }
       }
     }
+
     return errors;
   }
 ];
-
-/**
- * Groups errors whose absoluteKeywordLocation starts with a given prefix.
- * @param {string} parentKeywordLocation
- * @param {NormalizedError[]} allErrors
- * @returns {NormalizedError[]}
- */
-function applicatorChildErrors(parentKeywordLocation, allErrors) {
-  const matching = [];
-
-  for (let i = allErrors.length - 1; i >= 0; i--) {
-    const err = allErrors[i];
-    if (err.absoluteKeywordLocation.startsWith(parentKeywordLocation + "/")) {
-      matching.push(err);
-      allErrors.splice(i, 1);
-    }
-  }
-
-  return matching;
-}
-
-/**
- * @param {NormalizedError[]} matchingErrors
- * @param {number} numOfAlternatives
- * @returns {boolean}
- */
-function isOnlyOneTypeValid(matchingErrors, numOfAlternatives) {
-  const typeErrors = matchingErrors.filter(
-    (e) => e.keyword === "https://json-schema.org/keyword/type"
-  );
-  return numOfAlternatives - typeErrors.length === 1;
-}
-
-/**
- * @param {NormalizedError[]} matchingErrors
- * @param {NormalizedError} parentError
- * @param {Json} instance
- * @returns {Promise<ErrorObject>}
- */
-async function noDiscriminatorKeyMatchError(matchingErrors, parentError, instance) {
-  const expectedTypes = [];
-
-  for (const err of matchingErrors) {
-    const typeSchema = await getSchema(err.absoluteKeywordLocation);
-    const typeValue = /** @type any[] */ (Schema.value(typeSchema));
-    expectedTypes.push(typeValue);
-  }
-
-  const pointer = parentError.instanceLocation.replace(/^#/, "");
-  const actualValue = /** @type Json */ (Instance.get(pointer, instance));
-  const actualType = jsonTypeOf(actualValue);
-
-  const expectedString = expectedTypes.join(" or ");
-
-  return {
-    message: `The instance must be a ${expectedString}. Found '${actualType}'.`,
-    instanceLocation: parentError.instanceLocation,
-    schemaLocation: parentError.absoluteKeywordLocation
-  };
-}
 
 /** @type (value: Json) => "null" | "boolean" | "number" | "string" | "array" | "object" | "undefined" */
 const jsonTypeOf = (value) => {

@@ -547,12 +547,12 @@ describe("Error messages", () => {
     const result = await betterJsonSchemaErrors(instance, output, schemaUri);
     expect(result.errors).to.eql([
       {
-        instanceLocation: "#/3",
+        instanceLocation: "#/2",
         message: `The instance should be of type "number" but found "string".`,
         schemaLocation: "https://example.com/main#/items/type"
       },
       {
-        instanceLocation: "#/2",
+        instanceLocation: "#/3",
         message: `The instance should be of type "number" but found "string".`,
         schemaLocation: "https://example.com/main#/items/type"
       }
@@ -574,19 +574,16 @@ describe("Error messages", () => {
       valid: false,
       errors: [
         {
-          keyword: "https://json-schema.org/keyword/type",
           absoluteKeywordLocation: "https://example.com/main#/prefixItems/1/type",
           instanceLocation: "#/1",
           valid: false
         },
         {
-          keyword: "https://json-schema.org/keyword/type",
           absoluteKeywordLocation: "https://example.com/main#/prefixItems/2/type",
           instanceLocation: "#/2",
           valid: false
         },
         {
-          keyword: "https://json-schema.org/keyword/prefixItems",
           absoluteKeywordLocation: "https://example.com/main#/prefixItems",
           instanceLocation: "#",
           valid: false
@@ -641,7 +638,7 @@ describe("Error messages", () => {
       {
         schemaLocation: "https://example.com/main#/anyOf",
         instanceLocation: "#",
-        message: `The instance must be a number or string. Found 'boolean'.`
+        message: `The instance must be a string, number. Found 'boolean'.`
       }
     ]);
   });
@@ -739,9 +736,152 @@ describe("Error messages", () => {
     const result = await betterJsonSchemaErrors(instance, output, schemaUri);
     expect(result.errors).to.eql([
       {
-        schemaLocation: `${schemaUri}#/anyOf/1/properties/ID/pattern`,
+        schemaLocation: "https://example.com/main#/anyOf/1/properties/ID/pattern",
         instanceLocation: "#/ID",
         message: "The instance should match the pattern: ^[0-9\\-]+$."
+      }
+    ]);
+  });
+
+  test("anyOf - const-based discriminator mismatch", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      anyOf: [
+        {
+          type: "object",
+          properties: {
+            type: { const: "a" },
+            apple: { type: "string" },
+            angle: { type: "number" }
+          },
+          required: ["type", "apple", "angle"]
+        },
+        {
+          type: "object",
+          properties: {
+            type: { const: "b" },
+            banana: { type: "string" },
+            box: { type: "number" }
+          },
+          required: ["type", "banana", "box"]
+        }
+      ]
+    }, schemaUri);
+
+    const instance = {
+      type: "d",
+      banana: "yellow",
+      box: 10
+    };
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: `https://example.com/main#/anyOf/0/properties/type/const`,
+          instanceLocation: "#/type"
+        },
+        {
+          absoluteKeywordLocation: `https://example.com/main#/anyOf/1/properties/type/const`,
+          instanceLocation: "#/type"
+        },
+        {
+          absoluteKeywordLocation: `https://example.com/main#/anyOf`,
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: `https://example.com/main#/anyOf`,
+        instanceLocation: "#/type",
+        message: `Invalid value. Expected "a", "b". Found "d".`
+      }
+    ]);
+  });
+
+  test("anyOf - using $ref in alternatives", async () => {
+    const subjectUri = "https://example.com/main";
+
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      properties: {
+        foo: {
+          anyOf: [
+            { $ref: "#/$defs/stringSchema" },
+            { $ref: "#/$defs/numberSchema" }
+          ]
+        },
+        bar: { type: "boolean" }
+      },
+
+      $defs: {
+        stringSchema: {
+          type: "string",
+          minLength: 5
+        },
+        numberSchema: {
+          type: "number",
+          minimum: 10
+        }
+      }
+    }, subjectUri);
+
+    const instance = { foo: 3 };
+
+    const output = {
+      valid: false,
+      errors: [
+        {
+          valid: false,
+          keywordLocation: "/properties/foo/anyOf",
+          instanceLocation: "/foo",
+          errors: [
+            {
+              valid: false,
+              keywordLocation: "/properties/foo/anyOf/0/$ref",
+              instanceLocation: "/foo",
+              errors: [
+                {
+                  valid: false,
+                  keywordLocation: "/properties/foo/anyOf/0/$ref/type",
+                  instanceLocation: "/foo"
+                }
+              ]
+            },
+            {
+              valid: false,
+              keywordLocation: "/properties/foo/anyOf/1/$ref",
+              instanceLocation: "/foo",
+              errors: [
+                {
+                  valid: true,
+                  keywordLocation: "/properties/foo/anyOf/1/$ref/type",
+                  instanceLocation: "/foo"
+                },
+                {
+                  valid: false,
+                  keywordLocation: "/properties/foo/anyOf/1/$ref/minimum",
+                  instanceLocation: "/foo"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: "https://example.com/main#/$defs/numberSchema/minimum",
+        instanceLocation: "#/foo",
+        message: "The instance should be greater than or equal to 10."
       }
     ]);
   });
