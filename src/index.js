@@ -80,20 +80,19 @@ const errorHandlers = [
             instanceLocation: Instance.uri(instance),
             schemaLocation: schemaLocation
           });
-        } else if (alternatives.length === 1) {
+        } else if (alternatives.length === 1) { // case 2 when only one type match
           return getErrors(alternatives[0], instance);
+        } else if (instance.type === "object") {
+          let targetAlternativeIndex = -1;
+          for (const alternative of alternatives) {
+            targetAlternativeIndex++;
+            for (const instanceLocation in alternative) {
+              if (instanceLocation !== "#") {
+                return getErrors(alternatives[targetAlternativeIndex], instance);
+              }
+            }
+          }
         }
-
-        // const anyOfSchema = await getSchema(schemaLocation);
-        // const numberOfAlternatives = Schema.length(anyOfSchema);
-        // Instance.typeOf(instance);
-        // const instance = Instance.fromJs(instance)
-        // if(numberOfAlternatives == )
-        // errors.push({
-        //   message: `The instance should be at least ${Schema.value(keyword)} characters`,
-        //   instanceLocation: Instance.uri(instance),
-        //   schemaLocation: schemaLocation
-        // });
       }
     }
 
@@ -470,6 +469,7 @@ const errorHandlers = [
 
     return errors;
   },
+
   async (normalizedErrors, instance) => {
     /** @type ErrorObject[] */
     const errors = [];
@@ -488,31 +488,50 @@ const errorHandlers = [
     }
 
     return errors;
+  },
+
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async (normalizedErrors, instance) => {
+    /** @type ErrorObject[] */
+    const errors = [];
+
+    if (normalizedErrors["https://json-schema.org/keyword/contains"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/contains"]) {
+        // const keyword = await getSchema(schemaLocation);
+        errors.push({
+          message: `TODO - contains`,
+          instanceLocation: Instance.uri(instance),
+          schemaLocation: schemaLocation
+        });
+      }
+    }
+
+    return errors;
   }
 ];
 
-/** @type (value: Json) => "null" | "boolean" | "number" | "string" | "array" | "object" | "undefined" */
-const jsonTypeOf = (value) => {
-  const jsType = typeof value;
+// /** @type (value: Json) => "null" | "boolean" | "number" | "string" | "array" | "object" | "undefined" */
+// const jsonTypeOf = (value) => {
+//   const jsType = typeof value;
 
-  switch (jsType) {
-    case "number":
-    case "string":
-    case "boolean":
-    case "undefined":
-      return jsType;
-    case "object":
-      if (Array.isArray(value)) {
-        return "array";
-      } else if (value === null) {
-        return "null";
-      } else if (Object.getPrototypeOf(value) === Object.prototype) {
-        return "object";
-      }
-    default: {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-      const type = jsType === "object" ? Object.getPrototypeOf(value).constructor.name ?? "anonymous" : jsType;
-      throw Error(`Not a JSON compatible type: ${type}`);
-    }
-  }
-};
+//   switch (jsType) {
+//     case "number":
+//     case "string":
+//     case "boolean":
+//     case "undefined":
+//       return jsType;
+//     case "object":
+//       if (Array.isArray(value)) {
+//         return "array";
+//       } else if (value === null) {
+//         return "null";
+//       } else if (Object.getPrototypeOf(value) === Object.prototype) {
+//         return "object";
+//       }
+//     default: {
+//       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+//       const type = jsType === "object" ? Object.getPrototypeOf(value).constructor.name ?? "anonymous" : jsType;
+//       throw Error(`Not a JSON compatible type: ${type}`);
+//     }
+//   }
+// };

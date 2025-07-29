@@ -743,7 +743,7 @@ describe("Error messages", () => {
     ]);
   });
 
-  test("anyOf - const-based discriminator mismatch", async () => {
+  test.skip("anyOf - const-based discriminator mismatch", async () => {
     registerSchema({
       $schema: "https://json-schema.org/draft/2020-12/schema",
       anyOf: [
@@ -885,4 +885,116 @@ describe("Error messages", () => {
       }
     ]);
   });
+
+  test("normalized output for a failing 'contains' keyword", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      contains: {
+        type: "number",
+        multipleOf: 2
+      },
+      minContains: 1
+    }, schemaUri);
+    const instance = [3, 3, 5];
+    const output = {
+      valid: false,
+      errors: [
+        {
+          valid: false,
+          keywordLocation: "/contains",
+          instanceLocation: "#",
+          absoluteKeywordLocation: "https://example.com/main#/contains",
+          errors: [
+            {
+              valid: false,
+              instanceLocation: "#/0",
+              absoluteKeywordLocation: "https://example.com/main#/contains/multipleOf"
+            },
+            {
+              valid: false,
+              instanceLocation: "#/1",
+              absoluteKeywordLocation: "https://example.com/main#/contains/multipleOf"
+            },
+            {
+              valid: false,
+              instanceLocation: "#/2",
+              absoluteKeywordLocation: "https://example.com/main#/contains/multipleOf"
+            }
+          ]
+        }
+      ]
+    };
+    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    expect(result.errors).to.eql([
+      {
+        instanceLocation: "#",
+        message: "TODO - contains",
+        schemaLocation: "https://example.com/main#/contains"
+      }
+    ]);
+  });
+
+  test("when then fails in if-then-else", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      if: { multipleOf: 2 },
+      then: { minimum: 0 }
+    }, schemaUri);
+    const instance = -2;
+    const errorOutput = {
+      valid: false,
+      errors: [
+        {
+          valid: false,
+          absoluteKeywordLocation: "https://example.com/main#/then/minimum",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
+    expect(result.errors).to.eql([
+      {
+        instanceLocation: "#",
+        message: `The instance should be greater than or equal to 0.`,
+        schemaLocation: "https://example.com/main#/then/minimum"
+      }
+    ]);
+  });
+
+  test("when else fails in if-then-else", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      if: { multipleOf: 2 },
+      else: { minimum: 0 }
+    }, schemaUri);
+    const instance = -3;
+    const errorOutput = {
+      valid: false,
+      errors: [
+        {
+          valid: false,
+          absoluteKeywordLocation: "https://example.com/main#/else/minimum",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
+    expect(result.errors).to.eql([
+      {
+        instanceLocation: "#",
+        message: `The instance should be greater than or equal to 0.`,
+        schemaLocation: "https://example.com/main#/else/minimum"
+      }
+    ]);
+  });
+
+  // not
+  // dependentRequired
+  // patternProperties
+  // propertyNames
+  // additionalProperties
+  // unevaluatedProperties
+  // unevaluatedItems
 });

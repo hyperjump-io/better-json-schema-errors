@@ -86,28 +86,12 @@ keywordHandlers["https://json-schema.org/keyword/anyOf"] = {
   evaluate(/** @type string[] */ anyOf, ast, instance, errorIndex) {
     /** @type NormalizedOutput[] */
     const errors = [];
-
     for (const schemaLocation of anyOf) {
       errors.push(evaluateSchema(schemaLocation, ast, instance, errorIndex));
     }
 
     return errors;
   }
-};
-
-keywordHandlers["https://json-schema.org/keyword/items"] = {
-  evaluate(/** @type string[] */ itemsSchemaLocation, ast, instance, errorIndex) {
-    /** @type NormalizedOutput[] */
-    const errors = [];
-    if (Instance.typeOf(instance) !== "array") {
-      return errors;
-    }
-    for (const itemNode of Instance.iter(instance)) {
-      errors.push(evaluateSchema(itemsSchemaLocation[1], ast, itemNode, errorIndex));
-    }
-    return errors;
-  },
-  simpleApplicator: true
 };
 
 keywordHandlers["https://json-schema.org/keyword/allOf"] = {
@@ -153,11 +137,98 @@ keywordHandlers["https://json-schema.org/keyword/properties"] = {
       if (!propertyNode) {
         continue;
       }
-
       errors.push(evaluateSchema(properties[propertyName], ast, propertyNode, errorIndex));
     }
 
     return errors;
+  },
+  simpleApplicator: true
+};
+
+keywordHandlers["https://json-schema.org/keyword/items"] = {
+  evaluate(/** @type string[] */ itemsSchemaLocation, ast, instance, errorIndex) {
+    /** @type NormalizedOutput[] */
+    const errors = [];
+    if (Instance.typeOf(instance) !== "array") {
+      return errors;
+    }
+    for (const itemNode of Instance.iter(instance)) {
+      errors.push(evaluateSchema(itemsSchemaLocation[1], ast, itemNode, errorIndex));
+    }
+    return errors;
+  },
+  simpleApplicator: true
+};
+
+keywordHandlers["https://json-schema.org/keyword/prefixItems"] = {
+  evaluate(/** @type string[] */ prefixItemsSchemaLocations, ast, instance, errorIndex) {
+    /** @type NormalizedOutput[] */
+    const outputs = [];
+    if (Instance.typeOf(instance) !== "array") {
+      return outputs;
+    }
+    for (const [index, schemaLocation] of prefixItemsSchemaLocations.entries()) {
+      const itemNode = Instance.step(String(index), instance);
+      if (itemNode) {
+        outputs.push(evaluateSchema(schemaLocation, ast, itemNode, errorIndex));
+      }
+    }
+    return outputs;
+  },
+  simpleApplicator: true
+};
+
+keywordHandlers["https://json-schema.org/keyword/dependentSchemas"] = {
+  evaluate(/** @type [string, string][] */dependentSchemas, ast, instance, errorIndex) {
+    /** @type NormalizedOutput[] */
+    const outputs = [];
+    if (Instance.typeOf(instance) !== "object") {
+      return outputs;
+    }
+    const instanceKeys = Object.keys(Instance.value(instance));
+    for (const [propertyName, schemaLocation] of dependentSchemas) {
+      if (instanceKeys.includes(propertyName)) {
+        outputs.push(evaluateSchema(schemaLocation, ast, instance, errorIndex));
+      }
+    }
+    return outputs;
+  },
+  simpleApplicator: true
+};
+
+/**
+ * @typedef {{
+ *   minContains: number;
+ *   maxContains: number;
+ *   contains: string;
+ * }} ContainsKeyword
+ */
+keywordHandlers["https://json-schema.org/keyword/contains"] = {
+  evaluate(/** @type ContainsKeyword */contains, ast, instance, errorIndex) {
+    /** @type NormalizedOutput[] */
+    const outputs = [];
+    if (Instance.typeOf(instance) !== "array") {
+      return outputs;
+    }
+    for (const itemNode of Instance.iter(instance)) {
+      // console.log(errorIndex)
+      // console.log(evaluateSchema(contains.contains, ast, itemNode, errorIndex))
+      outputs.push(evaluateSchema(contains.contains, ast, itemNode, errorIndex));
+    }
+    return outputs;
+  }
+};
+
+keywordHandlers["https://json-schema.org/keyword/then"] = {
+  evaluate(/** @type [string, string] */ [, then], ast, instance, errorIndex) {
+    return [evaluateSchema(then, ast, instance, errorIndex)];
+  },
+  simpleApplicator: true
+};
+
+keywordHandlers["https://json-schema.org/keyword/else"] = {
+  evaluate(/** @type [string, string] */ [, elseSchema], ast, instance, errorIndex) {
+    return [evaluateSchema(elseSchema, ast, instance, errorIndex)];
   },
   simpleApplicator: true
 };
@@ -168,6 +239,36 @@ keywordHandlers["https://json-schema.org/keyword/definitions"] = {
   }
 };
 
+keywordHandlers["https://json-schema.org/keyword/type"] = {
+  appliesTo() {
+    return true;
+  }
+};
+keywordHandlers["https://json-schema.org/keyword/enum"] = {
+  appliesTo() {
+    return true;
+  }
+};
+keywordHandlers["https://json-schema.org/keyword/const"] = {
+  appliesTo() {
+    return true;
+  }
+};
+keywordHandlers["https://json-schema.org/keyword/required"] = {
+  appliesTo(type) {
+    return type === "object";
+  }
+};
+keywordHandlers["https://json-schema.org/keyword/maxProperties"] = {
+  appliesTo(type) {
+    return type === "object";
+  }
+};
+keywordHandlers["https://json-schema.org/keyword/minProperties"] = {
+  appliesTo(type) {
+    return type === "object";
+  }
+};
 keywordHandlers["https://json-schema.org/keyword/minLength"] = {
   appliesTo(type) {
     return type === "string";
@@ -216,11 +317,32 @@ keywordHandlers["https://json-schema/keyword/multipleOf"] = {
   }
 };
 
-keywordHandlers["https://json-schema.org/keyword/maximum"] = {
+keywordHandlers["https://json-schema.org/keyword/maxItems"] = {
   appliesTo(type) {
-    return type === "number";
+    return type === "array";
   }
 };
+keywordHandlers["https://json-schema.org/keyword/minItems"] = {
+  appliesTo(type) {
+    return type === "array";
+  }
+};
+keywordHandlers["https://json-schema.org/keyword/uniqueItems"] = {
+  appliesTo(type) {
+    return type === "array";
+  }
+};
+keywordHandlers["https://json-schema.org/keyword/maxContains"] = {
+  appliesTo(type) {
+    return type === "array";
+  }
+};
+keywordHandlers["https://json-schema.org/keyword/minContains"] = {
+  appliesTo(type) {
+    return type === "array";
+  }
+};
+
 /** @typedef {Record<string, Record<string, true>>} ErrorIndex */
 
 /** @type (outputUnit: OutputUnit, schema: BrowserType<SchemaDocument>, errorIndex?: ErrorIndex) => Promise<ErrorIndex> */
