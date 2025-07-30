@@ -24,18 +24,15 @@ export type SchemaObject = {
   [keyword: string]: SchemaFragment;
 };
 
-export type OutputFormat = {
+export type OutputFormat = OutputUnit & {
   valid: boolean;
-  errors: OutputUnit[];
 };
 
 export type OutputUnit = {
   valid?: boolean;
-  keyword?: string;
   absoluteKeywordLocation?: string;
   keywordLocation?: string;
-  instanceLocation: string;
-  error?: string;
+  instanceLocation?: string;
   errors?: OutputUnit[];
 };
 
