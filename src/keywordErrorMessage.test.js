@@ -1076,7 +1076,7 @@ describe("Error messages", async () => {
         {
           valid: false,
           absoluteKeywordLocation: "https://example.com/main#/propertyNames/pattern",
-          instanceLocation: "#"
+          instanceLocation: "#*/Foo"
         }
       ]
     };
@@ -1084,7 +1084,7 @@ describe("Error messages", async () => {
     const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
     expect(result.errors).to.eql([
       {
-        instanceLocation: "#",
+        instanceLocation: "#*/Foo",
         message: "The instance should match the pattern: ^[a-z]*$.",
         schemaLocation: "https://example.com/main#/propertyNames/pattern"
       }
@@ -1129,4 +1129,36 @@ describe("Error messages", async () => {
       }
     ]);
   });
+
+  // test("dependentRequired case", async () => {
+  //   registerSchema({
+  //     $schema: "https://json-schema.org/draft/2020-12/schema",
+  //     dependentRequired: {
+  //       foo: ["bar", "baz"]
+  //     }
+  //   }, schemaUri);
+
+  //   const instance = { foo: 1, bar: 2 };
+
+  //   const errorOutput = {
+  //     valid: false,
+  //     errors: [
+  //       {
+  //         valid: false,
+  //         absoluteKeywordLocation: "https://example.com/main#/",
+  //         instanceLocation: "#"
+  //       }
+  //     ]
+  //   };
+
+  //   const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
+
+  //   expect(result.errors).to.eql([
+  //     {
+  //       instanceLocation: "#",
+  //       message: "TODO.",
+  //       schemaLocation: "https://example.com/main#/depedentRequired"
+  //     }
+  //   ]);
+  // });
 });

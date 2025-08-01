@@ -196,6 +196,12 @@ keywordHandlers["https://json-schema.org/keyword/dependentSchemas"] = {
   simpleApplicator: true
 };
 
+keywordHandlers["https://json-schema.org/keyword/dependentRequired"] = {
+  appliesTo() {
+    return true;
+  }
+};
+
 /**
  * @typedef {{
  *   minContains: number;
@@ -211,8 +217,6 @@ keywordHandlers["https://json-schema.org/keyword/contains"] = {
       return outputs;
     }
     for (const itemNode of Instance.iter(instance)) {
-      // console.log(errorIndex)
-      // console.log(evaluateSchema(contains.contains, ast, itemNode, errorIndex))
       outputs.push(evaluateSchema(contains.contains, ast, itemNode, errorIndex));
     }
     return outputs;
@@ -253,10 +257,7 @@ keywordHandlers["https://json-schema.org/keyword/patternProperties"] = {
       for (const [propertyNameNode, propertyValue] of Instance.entries(instance)) {
         const propertyName = /** @type string */ (Instance.value(propertyNameNode));
         if (regex.test(propertyName)) {
-          const propertyNode = Instance.step(propertyName, instance);
-          if (propertyNode) {
-            outputs.push(evaluateSchema(schemaLocation, ast, propertyValue, errorIndex));
-          }
+          outputs.push(evaluateSchema(schemaLocation, ast, propertyValue, errorIndex));
         }
       }
     }
@@ -272,10 +273,8 @@ keywordHandlers["https://json-schema.org/keyword/propertyNames"] = {
     if (Instance.typeOf(instance) !== "object") {
       return outputs;
     }
-    const instanceValue =/** @type Record<string, string> */ (Instance.value(instance));
-    for (const propertyName of Object.keys(instanceValue)) {
-      const propertyNameNode = Instance.fromJs(propertyName);
-      outputs.push(evaluateSchema(propertyNamesSchemaLocation, ast, propertyNameNode, errorIndex));
+    for (const propertyName of Instance.keys(instance)) {
+      outputs.push(evaluateSchema(propertyNamesSchemaLocation, ast, propertyName, errorIndex));
     }
     return outputs;
   },
@@ -304,12 +303,7 @@ keywordHandlers["https://json-schema.org/keyword/additionalProperties"] = {
     return outputs;
   }
 };
-
-// not
 // dependentRequired
-// patternProperties
-// propertyNames
-// additionalProperties
 // unevaluatedProperties
 // unevaluatedItems
 
