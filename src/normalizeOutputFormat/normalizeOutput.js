@@ -196,6 +196,12 @@ keywordHandlers["https://json-schema.org/keyword/dependentSchemas"] = {
   simpleApplicator: true
 };
 
+keywordHandlers["https://json-schema.org/keyword/dependentRequired"] = {
+  appliesTo() {
+    return true;
+  }
+};
+
 /**
  * @typedef {{
  *   minContains: number;
@@ -211,8 +217,6 @@ keywordHandlers["https://json-schema.org/keyword/contains"] = {
       return outputs;
     }
     for (const itemNode of Instance.iter(instance)) {
-      // console.log(errorIndex)
-      // console.log(evaluateSchema(contains.contains, ast, itemNode, errorIndex))
       outputs.push(evaluateSchema(contains.contains, ast, itemNode, errorIndex));
     }
     return outputs;
@@ -232,6 +236,76 @@ keywordHandlers["https://json-schema.org/keyword/else"] = {
   },
   simpleApplicator: true
 };
+
+keywordHandlers["https://json-schema.org/keyword/not"] = {
+  evaluate(/** @type string */ not, ast, instance, errorIndex) {
+    return [evaluateSchema(not, ast, instance, errorIndex)];
+  }
+};
+
+keywordHandlers["https://json-schema.org/keyword/patternProperties"] = {
+  evaluate(/** @type [string,string][] */ patternProperties, ast, instance, errorIndex) {
+    /** @type NormalizedOutput[] */
+    const outputs = [];
+    if (Instance.typeOf(instance) !== "object") {
+      return outputs;
+    }
+
+    for (const [pattern, schemaLocation] of patternProperties) {
+      const regex = new RegExp(pattern);
+
+      for (const [propertyNameNode, propertyValue] of Instance.entries(instance)) {
+        const propertyName = /** @type string */ (Instance.value(propertyNameNode));
+        if (regex.test(propertyName)) {
+          outputs.push(evaluateSchema(schemaLocation, ast, propertyValue, errorIndex));
+        }
+      }
+    }
+    return outputs;
+  },
+  simpleApplicator: true
+};
+
+keywordHandlers["https://json-schema.org/keyword/propertyNames"] = {
+  evaluate(/** @type string */ propertyNamesSchemaLocation, ast, instance, errorIndex) {
+    /** @type NormalizedOutput[] */
+    const outputs = [];
+    if (Instance.typeOf(instance) !== "object") {
+      return outputs;
+    }
+    for (const propertyName of Instance.keys(instance)) {
+      outputs.push(evaluateSchema(propertyNamesSchemaLocation, ast, propertyName, errorIndex));
+    }
+    return outputs;
+  },
+  simpleApplicator: true
+};
+/**
+ * @typedef {[
+ *  regexExp: RegExp,
+ *  schemaLocation: string
+ * ]} AdditionalPropertiesKeyword
+ */
+keywordHandlers["https://json-schema.org/keyword/additionalProperties"] = {
+  evaluate(/** @type AdditionalPropertiesKeyword */ [isDefinedProperty, additionalProperties], ast, instance, errorIndex) {
+    /** @type NormalizedOutput[] */
+    const outputs = [];
+    if (Instance.typeOf(instance) !== "object") {
+      return outputs;
+    }
+    for (const [propertyNameNode, property] of Instance.entries(instance)) {
+      const propertyName = /** @type string */ (Instance.value(propertyNameNode));
+      if (isDefinedProperty.test(propertyName)) {
+        continue;
+      }
+      outputs.push(evaluateSchema(additionalProperties, ast, property, errorIndex));
+    }
+    return outputs;
+  }
+};
+// dependentRequired
+// unevaluatedProperties
+// unevaluatedItems
 
 keywordHandlers["https://json-schema.org/keyword/definitions"] = {
   appliesTo() {
