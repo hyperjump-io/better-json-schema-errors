@@ -196,12 +196,6 @@ keywordHandlers["https://json-schema.org/keyword/dependentSchemas"] = {
   simpleApplicator: true
 };
 
-keywordHandlers["https://json-schema.org/keyword/dependentRequired"] = {
-  appliesTo() {
-    return true;
-  }
-};
-
 /**
  * @typedef {{
  *   minContains: number;
@@ -303,9 +297,106 @@ keywordHandlers["https://json-schema.org/keyword/additionalProperties"] = {
     return outputs;
   }
 };
-// dependentRequired
-// unevaluatedProperties
-// unevaluatedItems
+
+keywordHandlers["https://json-schema.org/keyword/unevaluatedItems"] = {
+  evaluate(/** @type string[] */ [parentSchemaLocation, unevaluatedItemsSchemaLocation], ast, instance, errorIndex) {
+    /** @type NormalizedOutput[] */
+    const outputs = [];
+    if (Instance.typeOf(instance) !== "array") {
+      return outputs;
+    }
+
+    const parentSchemaNode = ast[parentSchemaLocation];
+    const evaluatedIndices = new Set();
+    const instanceLength = Instance.length(instance);
+
+    if (parentSchemaNode && typeof parentSchemaNode !== "boolean") {
+      const siblingKeywords = /** @type Map<string, unknown> */(new Map());
+      for (const [uri, , value] of parentSchemaNode) {
+        siblingKeywords.set(uri, value);
+      }
+      if (siblingKeywords.has("https://json-schema.org/keyword/items") || siblingKeywords.has("https://json-schema.org/keyword/contains")) {
+        for (let i = 0; i < instanceLength; i++) {
+          evaluatedIndices.add(i);
+        }
+      } else if (siblingKeywords.has("https://json-schema.org/keyword/prefixItems")) {
+        const prefixItemsValue = /** @type {string[]} */(siblingKeywords.get("https://json-schema.org/keyword/prefixItems"));
+        const count = Math.min(prefixItemsValue.length, instanceLength);
+        for (let i = 0; i < count; i++) {
+          evaluatedIndices.add(i);
+        }
+      }
+    }
+
+    let index = 0;
+    for (const itemNode of Instance.iter(instance)) {
+      if (!evaluatedIndices.has(index)) {
+        outputs.push(evaluateSchema(unevaluatedItemsSchemaLocation, ast, itemNode, errorIndex));
+      }
+      index++;
+    }
+    return outputs;
+  },
+  simpleApplicator: true
+};
+
+keywordHandlers["https://json-schema.org/keyword/unevaluatedProperties"] = {
+  evaluate(/** @type string[] */ [parentSchemaLocation, unevaluatedPropertiesSchemaLocation], ast, instance, errorIndex) {
+    /** @type NormalizedOutput[] */
+    const outputs = [];
+    if (Instance.typeOf(instance) !== "object") {
+      return outputs;
+    }
+
+    const parentSchemaNode = ast[parentSchemaLocation];
+    const evaluatedProperties = new Set();
+
+    if (parentSchemaNode && typeof parentSchemaNode !== "boolean") {
+      const siblingKeywords = /** @type Map<string, unknown> */(new Map());
+      for (const [uri, , value] of parentSchemaNode) {
+        siblingKeywords.set(uri, value);
+      }
+      // Check for sibling `properties`
+      if (siblingKeywords.has("https://json-schema.org/keyword/properties")) {
+        const propertiesValue = /** @type {Record<string, string>} */(siblingKeywords.get("https://json-schema.org/keyword/properties"));
+        for (const propertyName in propertiesValue) {
+          evaluatedProperties.add(propertyName);
+        }
+      }
+
+      if (siblingKeywords.has("https://json-schema.org/keyword/patternProperties")) {
+        const patternPropertiesValue = /** @type [string,string][] */(siblingKeywords.get("https://json-schema.org/keyword/patternProperties"));
+        for (const [pattern] of patternPropertiesValue) {
+          const regex = new RegExp(pattern);
+          for (const [propertyNameNode] of Instance.entries(instance)) {
+            const propertyName = /** @type string */ (Instance.value(propertyNameNode));
+            if (regex.test(propertyName)) {
+              evaluatedProperties.add(propertyName);
+            }
+          }
+        }
+      }
+
+      if (siblingKeywords.has("https://json-schema.org/keyword/additionalProperties")) {
+        for (const [propertyNameNode] of Instance.entries(instance)) {
+          const propertyName = /** @type string */ (Instance.value(propertyNameNode));
+          evaluatedProperties.add(propertyName);
+        }
+      }
+    }
+
+    // Iterate through the instance and apply the schema to any unevaluated properties.
+    for (const [propertyNameNode, propertyValue] of Instance.entries(instance)) {
+      const propertyName = /** @type string */ (Instance.value(propertyNameNode));
+      if (!evaluatedProperties.has(propertyName)) {
+        outputs.push(evaluateSchema(unevaluatedPropertiesSchemaLocation, ast, propertyValue, errorIndex));
+      }
+    }
+
+    return outputs;
+  },
+  simpleApplicator: true
+};
 
 keywordHandlers["https://json-schema.org/keyword/definitions"] = {
   appliesTo() {
@@ -414,6 +505,12 @@ keywordHandlers["https://json-schema.org/keyword/maxContains"] = {
 keywordHandlers["https://json-schema.org/keyword/minContains"] = {
   appliesTo(type) {
     return type === "array";
+  }
+};
+
+keywordHandlers["https://json-schema.org/keyword/dependentRequired"] = {
+  appliesTo(type) {
+    return type === "object";
   }
 };
 

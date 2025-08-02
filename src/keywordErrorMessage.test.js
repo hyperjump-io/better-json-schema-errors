@@ -1130,35 +1130,100 @@ describe("Error messages", async () => {
     ]);
   });
 
-  // test("dependentRequired case", async () => {
-  //   registerSchema({
-  //     $schema: "https://json-schema.org/draft/2020-12/schema",
-  //     dependentRequired: {
-  //       foo: ["bar", "baz"]
-  //     }
-  //   }, schemaUri);
+  test("dependentRequired case", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      dependentRequired: {
+        foo: ["bar", "baz"]
+      }
+    }, schemaUri);
 
-  //   const instance = { foo: 1, bar: 2 };
+    const instance = { foo: 1, bar: 2 };
 
-  //   const errorOutput = {
-  //     valid: false,
-  //     errors: [
-  //       {
-  //         valid: false,
-  //         absoluteKeywordLocation: "https://example.com/main#/",
-  //         instanceLocation: "#"
-  //       }
-  //     ]
-  //   };
+    const errorOutput = {
+      valid: false,
+      errors: [
+        {
+          valid: false,
+          absoluteKeywordLocation: "https://example.com/main#/dependentRequired",
+          instanceLocation: "#"
+        }
+      ]
+    };
 
-  //   const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
+    const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
 
-  //   expect(result.errors).to.eql([
-  //     {
-  //       instanceLocation: "#",
-  //       message: "TODO.",
-  //       schemaLocation: "https://example.com/main#/depedentRequired"
-  //     }
-  //   ]);
-  // });
+    expect(result.errors).to.eql([
+      {
+        instanceLocation: "#",
+        message: `Property "foo" requires property(s): baz.`,
+        schemaLocation: "https://example.com/main#/dependentRequired"
+      }
+    ]);
+  });
+
+  test("should fail when an unevaluated item has the wrong type", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      prefixItems: [{ type: "number" }],
+      unevaluatedItems: { type: "string" }
+    }, schemaUri);
+
+    const instance = [1, "two", false];
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/unevaluatedItems/type",
+          instanceLocation: "#/2"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: "https://example.com/main#/unevaluatedItems/type",
+        instanceLocation: "#/2",
+        message: localization.getTypeErrorMessage("string", "boolean")
+      }
+    ]);
+  });
+
+  test("should fail when an unevaluated property has the wrong type", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      properties: {
+        known: { type: "string" }
+      },
+      unevaluatedProperties: { type: "number" }
+    }, schemaUri);
+
+    const instance = {
+      known: "a string",
+      unknown: "this should have been a number"
+    };
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/unevaluatedProperties/type",
+          instanceLocation: "#/unknown"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: "https://example.com/main#/unevaluatedProperties/type",
+        instanceLocation: "#/unknown",
+        message: localization.getTypeErrorMessage("number", "string")
+      }
+    ]);
+  });
 });

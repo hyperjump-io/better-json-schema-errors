@@ -555,5 +555,34 @@ const errorHandlers = [
       }
     }
     return errors;
+  },
+  async (normalizedErrors, instance) => {
+    /** @type ErrorObject[] */
+    const errors = [];
+
+    if (normalizedErrors["https://json-schema.org/keyword/dependentRequired"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/dependentRequired"]) {
+        if (!normalizedErrors["https://json-schema.org/keyword/dependentRequired"][schemaLocation]) {
+          const keyword = await getSchema(schemaLocation);
+          const dependentRequired = /** @type {Record<string, string[]>} */(Schema.value(keyword));
+          for (const propertyName in dependentRequired) {
+            if (Instance.has(propertyName, instance)) {
+              const required = dependentRequired[propertyName];
+              const missing = required.filter((prop) => !Instance.has(prop, instance));
+
+              if (missing.length > 0) {
+                errors.push({
+                  message: `Property "${propertyName}" requires property(s): ${missing.join(", ")}.`,
+                  instanceLocation: Instance.uri(instance),
+                  schemaLocation: schemaLocation
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return errors;
   }
 ];
