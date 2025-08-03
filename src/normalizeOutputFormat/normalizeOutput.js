@@ -23,8 +23,13 @@ import * as Browser from "@hyperjump/browser";
  * }} NormalizedOutput
  */
 
-/** @type (schemaLocation: string, ast: AST, instance: JsonNode, errorIndex: ErrorIndex) => NormalizedOutput */
-const evaluateSchema = (schemaLocation, ast, instance, errorIndex) => {
+class EvaluationContext {
+  evaluatedProperties =/** @type {Set<string>} */ (new Set());
+  evaluatedIndices =/** @type {Set<number>} */ (new Set());
+}
+
+/** @type (schemaLocation: string, ast: AST, instance: JsonNode, errorIndex: ErrorIndex, context: EvaluationContext) => NormalizedOutput */
+const evaluateSchema = (schemaLocation, ast, instance, errorIndex, context) => {
   const instanceLocation = Instance.uri(instance);
   const schemaNode = ast[schemaLocation];
   if (typeof schemaNode === "boolean") {
@@ -42,7 +47,7 @@ const evaluateSchema = (schemaLocation, ast, instance, errorIndex) => {
   for (const [keywordUri, keywordLocation, keywordValue] of schemaNode) {
     const keyword = keywordHandlers[keywordUri] ?? {};
 
-    const keywordOutput = keyword.evaluate?.(keywordValue, ast, instance, errorIndex);
+    const keywordOutput = keyword.evaluate?.(keywordValue, ast, instance, errorIndex, context);
     if (keyword.simpleApplicator) {
       for (const suboutput of (keywordOutput ?? [])) {
         mergeOutput(output, suboutput);
@@ -73,7 +78,7 @@ const mergeOutput = (a, b) => {
 
 /**
  * @typedef {{
- *   evaluate?(value: any, ast: AST, instance: JsonNode, errorIndex: ErrorIndex):  NormalizedOutput[]
+ *   evaluate?(value: any, ast: AST, instance: JsonNode, errorIndex: ErrorIndex, context: EvaluationContext):  NormalizedOutput[]
  *   appliesTo?(type: string): boolean;
  *   simpleApplicator?: true;
  * }} KeywordHandler
@@ -83,11 +88,11 @@ const mergeOutput = (a, b) => {
 const keywordHandlers = {};
 
 keywordHandlers["https://json-schema.org/keyword/anyOf"] = {
-  evaluate(/** @type string[] */ anyOf, ast, instance, errorIndex) {
+  evaluate(/** @type string[] */ anyOf, ast, instance, errorIndex, context) {
     /** @type NormalizedOutput[] */
     const errors = [];
     for (const schemaLocation of anyOf) {
-      errors.push(evaluateSchema(schemaLocation, ast, instance, errorIndex));
+      errors.push(evaluateSchema(schemaLocation, ast, instance, errorIndex, context));
     }
 
     return errors;
@@ -95,11 +100,11 @@ keywordHandlers["https://json-schema.org/keyword/anyOf"] = {
 };
 
 keywordHandlers["https://json-schema.org/keyword/allOf"] = {
-  evaluate(/** @type string[] */ allOf, ast, instance, errorIndex) {
+  evaluate(/** @type string[] */ allOf, ast, instance, errorIndex, context) {
     /** @type NormalizedOutput[] */
     const errors = [];
     for (const schemaLocation of allOf) {
-      errors.push(evaluateSchema(schemaLocation, ast, instance, errorIndex));
+      errors.push(evaluateSchema(schemaLocation, ast, instance, errorIndex, context));
     }
 
     return errors;
@@ -108,12 +113,12 @@ keywordHandlers["https://json-schema.org/keyword/allOf"] = {
 };
 
 keywordHandlers["https://json-schema.org/keyword/oneOf"] = {
-  evaluate(/** @type string[] */ oneOf, ast, instance, errorIndex) {
+  evaluate(/** @type string[] */ oneOf, ast, instance, errorIndex, context) {
     /** @type NormalizedOutput[] */
     const errors = [];
 
     for (const schemaLocation of oneOf) {
-      errors.push(evaluateSchema(schemaLocation, ast, instance, errorIndex));
+      errors.push(evaluateSchema(schemaLocation, ast, instance, errorIndex, context));
     }
 
     return errors;
@@ -121,14 +126,14 @@ keywordHandlers["https://json-schema.org/keyword/oneOf"] = {
 };
 
 keywordHandlers["https://json-schema.org/keyword/ref"] = {
-  evaluate(/** @type string */ ref, ast, instance, errorIndex) {
-    return [evaluateSchema(ref, ast, instance, errorIndex)];
+  evaluate(/** @type string */ ref, ast, instance, errorIndex, context) {
+    return [evaluateSchema(ref, ast, instance, errorIndex, context)];
   },
   simpleApplicator: true
 };
 
 keywordHandlers["https://json-schema.org/keyword/properties"] = {
-  evaluate(/** @type Record<string, string> */ properties, ast, instance, errorIndex) {
+  evaluate(/** @type Record<string, string> */ properties, ast, instance, errorIndex, context) {
     /** @type NormalizedOutput[] */
     const errors = [];
 
@@ -137,7 +142,8 @@ keywordHandlers["https://json-schema.org/keyword/properties"] = {
       if (!propertyNode) {
         continue;
       }
-      errors.push(evaluateSchema(properties[propertyName], ast, propertyNode, errorIndex));
+      context.evaluatedProperties.add(propertyName);
+      errors.push(evaluateSchema(properties[propertyName], ast, propertyNode, errorIndex, context));
     }
 
     return errors;
@@ -146,14 +152,16 @@ keywordHandlers["https://json-schema.org/keyword/properties"] = {
 };
 
 keywordHandlers["https://json-schema.org/keyword/items"] = {
-  evaluate(/** @type string[] */ itemsSchemaLocation, ast, instance, errorIndex) {
+  evaluate(/** @type string[] */ [,itemsSchemaLocation], ast, instance, errorIndex, context) {
     /** @type NormalizedOutput[] */
     const errors = [];
     if (Instance.typeOf(instance) !== "array") {
       return errors;
     }
+    let index = 0;
     for (const itemNode of Instance.iter(instance)) {
-      errors.push(evaluateSchema(itemsSchemaLocation[1], ast, itemNode, errorIndex));
+      context.evaluatedIndices.add(index++);
+      errors.push(evaluateSchema(itemsSchemaLocation, ast, itemNode, errorIndex, context));
     }
     return errors;
   },
@@ -161,16 +169,17 @@ keywordHandlers["https://json-schema.org/keyword/items"] = {
 };
 
 keywordHandlers["https://json-schema.org/keyword/prefixItems"] = {
-  evaluate(/** @type string[] */ prefixItemsSchemaLocations, ast, instance, errorIndex) {
+  evaluate(/** @type string[] */ prefixItemsSchemaLocations, ast, instance, errorIndex, context) {
     /** @type NormalizedOutput[] */
     const outputs = [];
     if (Instance.typeOf(instance) !== "array") {
       return outputs;
     }
     for (const [index, schemaLocation] of prefixItemsSchemaLocations.entries()) {
+      context.evaluatedIndices.add(index);
       const itemNode = Instance.step(String(index), instance);
       if (itemNode) {
-        outputs.push(evaluateSchema(schemaLocation, ast, itemNode, errorIndex));
+        outputs.push(evaluateSchema(schemaLocation, ast, itemNode, errorIndex, context));
       }
     }
     return outputs;
@@ -179,7 +188,7 @@ keywordHandlers["https://json-schema.org/keyword/prefixItems"] = {
 };
 
 keywordHandlers["https://json-schema.org/keyword/dependentSchemas"] = {
-  evaluate(/** @type [string, string][] */dependentSchemas, ast, instance, errorIndex) {
+  evaluate(/** @type [string, string][] */dependentSchemas, ast, instance, errorIndex, context) {
     /** @type NormalizedOutput[] */
     const outputs = [];
     if (Instance.typeOf(instance) !== "object") {
@@ -188,7 +197,7 @@ keywordHandlers["https://json-schema.org/keyword/dependentSchemas"] = {
     const instanceKeys = Object.keys(Instance.value(instance));
     for (const [propertyName, schemaLocation] of dependentSchemas) {
       if (instanceKeys.includes(propertyName)) {
-        outputs.push(evaluateSchema(schemaLocation, ast, instance, errorIndex));
+        outputs.push(evaluateSchema(schemaLocation, ast, instance, errorIndex, context));
       }
     }
     return outputs;
@@ -204,41 +213,43 @@ keywordHandlers["https://json-schema.org/keyword/dependentSchemas"] = {
  * }} ContainsKeyword
  */
 keywordHandlers["https://json-schema.org/keyword/contains"] = {
-  evaluate(/** @type ContainsKeyword */contains, ast, instance, errorIndex) {
+  evaluate(/** @type ContainsKeyword */contains, ast, instance, errorIndex, context) {
     /** @type NormalizedOutput[] */
     const outputs = [];
     if (Instance.typeOf(instance) !== "array") {
       return outputs;
     }
+    let index = 0;
     for (const itemNode of Instance.iter(instance)) {
-      outputs.push(evaluateSchema(contains.contains, ast, itemNode, errorIndex));
+      context.evaluatedIndices.add(index++);
+      outputs.push(evaluateSchema(contains.contains, ast, itemNode, errorIndex, context));
     }
     return outputs;
   }
 };
 
 keywordHandlers["https://json-schema.org/keyword/then"] = {
-  evaluate(/** @type [string, string] */ [, then], ast, instance, errorIndex) {
-    return [evaluateSchema(then, ast, instance, errorIndex)];
+  evaluate(/** @type [string, string] */ [, then], ast, instance, errorIndex, context) {
+    return [evaluateSchema(then, ast, instance, errorIndex, context)];
   },
   simpleApplicator: true
 };
 
 keywordHandlers["https://json-schema.org/keyword/else"] = {
-  evaluate(/** @type [string, string] */ [, elseSchema], ast, instance, errorIndex) {
-    return [evaluateSchema(elseSchema, ast, instance, errorIndex)];
+  evaluate(/** @type [string, string] */ [, elseSchema], ast, instance, errorIndex, context) {
+    return [evaluateSchema(elseSchema, ast, instance, errorIndex, context)];
   },
   simpleApplicator: true
 };
 
 keywordHandlers["https://json-schema.org/keyword/not"] = {
-  evaluate(/** @type string */ not, ast, instance, errorIndex) {
-    return [evaluateSchema(not, ast, instance, errorIndex)];
+  evaluate(/** @type string */ not, ast, instance, errorIndex, context) {
+    return [evaluateSchema(not, ast, instance, errorIndex, context)];
   }
 };
 
 keywordHandlers["https://json-schema.org/keyword/patternProperties"] = {
-  evaluate(/** @type [string,string][] */ patternProperties, ast, instance, errorIndex) {
+  evaluate(/** @type [string,string][] */ patternProperties, ast, instance, errorIndex, context) {
     /** @type NormalizedOutput[] */
     const outputs = [];
     if (Instance.typeOf(instance) !== "object") {
@@ -251,7 +262,8 @@ keywordHandlers["https://json-schema.org/keyword/patternProperties"] = {
       for (const [propertyNameNode, propertyValue] of Instance.entries(instance)) {
         const propertyName = /** @type string */ (Instance.value(propertyNameNode));
         if (regex.test(propertyName)) {
-          outputs.push(evaluateSchema(schemaLocation, ast, propertyValue, errorIndex));
+          context.evaluatedProperties.add(propertyName);
+          outputs.push(evaluateSchema(schemaLocation, ast, propertyValue, errorIndex, context));
         }
       }
     }
@@ -261,14 +273,14 @@ keywordHandlers["https://json-schema.org/keyword/patternProperties"] = {
 };
 
 keywordHandlers["https://json-schema.org/keyword/propertyNames"] = {
-  evaluate(/** @type string */ propertyNamesSchemaLocation, ast, instance, errorIndex) {
+  evaluate(/** @type string */ propertyNamesSchemaLocation, ast, instance, errorIndex, context) {
     /** @type NormalizedOutput[] */
     const outputs = [];
     if (Instance.typeOf(instance) !== "object") {
       return outputs;
     }
     for (const propertyName of Instance.keys(instance)) {
-      outputs.push(evaluateSchema(propertyNamesSchemaLocation, ast, propertyName, errorIndex));
+      outputs.push(evaluateSchema(propertyNamesSchemaLocation, ast, propertyName, errorIndex, context));
     }
     return outputs;
   },
@@ -281,7 +293,7 @@ keywordHandlers["https://json-schema.org/keyword/propertyNames"] = {
  * ]} AdditionalPropertiesKeyword
  */
 keywordHandlers["https://json-schema.org/keyword/additionalProperties"] = {
-  evaluate(/** @type AdditionalPropertiesKeyword */ [isDefinedProperty, additionalProperties], ast, instance, errorIndex) {
+  evaluate(/** @type AdditionalPropertiesKeyword */ [isDefinedProperty, additionalProperties], ast, instance, errorIndex, context) {
     /** @type NormalizedOutput[] */
     const outputs = [];
     if (Instance.typeOf(instance) !== "object") {
@@ -292,46 +304,25 @@ keywordHandlers["https://json-schema.org/keyword/additionalProperties"] = {
       if (isDefinedProperty.test(propertyName)) {
         continue;
       }
-      outputs.push(evaluateSchema(additionalProperties, ast, property, errorIndex));
+      context.evaluatedProperties.add(propertyName);
+      outputs.push(evaluateSchema(additionalProperties, ast, property, errorIndex, context));
     }
     return outputs;
   }
 };
 
 keywordHandlers["https://json-schema.org/keyword/unevaluatedItems"] = {
-  evaluate(/** @type string[] */ [parentSchemaLocation, unevaluatedItemsSchemaLocation], ast, instance, errorIndex) {
+  evaluate(/** @type string[] */ [, unevaluatedItemsSchemaLocation], ast, instance, errorIndex, context) {
     /** @type NormalizedOutput[] */
     const outputs = [];
     if (Instance.typeOf(instance) !== "array") {
       return outputs;
     }
 
-    const parentSchemaNode = ast[parentSchemaLocation];
-    const evaluatedIndices = new Set();
-    const instanceLength = Instance.length(instance);
-
-    if (parentSchemaNode && typeof parentSchemaNode !== "boolean") {
-      const siblingKeywords = /** @type Map<string, unknown> */(new Map());
-      for (const [uri, , value] of parentSchemaNode) {
-        siblingKeywords.set(uri, value);
-      }
-      if (siblingKeywords.has("https://json-schema.org/keyword/items") || siblingKeywords.has("https://json-schema.org/keyword/contains")) {
-        for (let i = 0; i < instanceLength; i++) {
-          evaluatedIndices.add(i);
-        }
-      } else if (siblingKeywords.has("https://json-schema.org/keyword/prefixItems")) {
-        const prefixItemsValue = /** @type {string[]} */(siblingKeywords.get("https://json-schema.org/keyword/prefixItems"));
-        const count = Math.min(prefixItemsValue.length, instanceLength);
-        for (let i = 0; i < count; i++) {
-          evaluatedIndices.add(i);
-        }
-      }
-    }
-
     let index = 0;
     for (const itemNode of Instance.iter(instance)) {
-      if (!evaluatedIndices.has(index)) {
-        outputs.push(evaluateSchema(unevaluatedItemsSchemaLocation, ast, itemNode, errorIndex));
+      if (!context.evaluatedIndices.has(index)) {
+        outputs.push(evaluateSchema(unevaluatedItemsSchemaLocation, ast, itemNode, errorIndex, context));
       }
       index++;
     }
@@ -341,58 +332,19 @@ keywordHandlers["https://json-schema.org/keyword/unevaluatedItems"] = {
 };
 
 keywordHandlers["https://json-schema.org/keyword/unevaluatedProperties"] = {
-  evaluate(/** @type string[] */ [parentSchemaLocation, unevaluatedPropertiesSchemaLocation], ast, instance, errorIndex) {
+  evaluate(/** @type string[] */ [, unevaluatedPropertiesSchemaLocation], ast, instance, errorIndex, context) {
     /** @type NormalizedOutput[] */
     const outputs = [];
     if (Instance.typeOf(instance) !== "object") {
       return outputs;
     }
 
-    const parentSchemaNode = ast[parentSchemaLocation];
-    const evaluatedProperties = new Set();
-
-    if (parentSchemaNode && typeof parentSchemaNode !== "boolean") {
-      const siblingKeywords = /** @type Map<string, unknown> */(new Map());
-      for (const [uri, , value] of parentSchemaNode) {
-        siblingKeywords.set(uri, value);
-      }
-      // Check for sibling `properties`
-      if (siblingKeywords.has("https://json-schema.org/keyword/properties")) {
-        const propertiesValue = /** @type {Record<string, string>} */(siblingKeywords.get("https://json-schema.org/keyword/properties"));
-        for (const propertyName in propertiesValue) {
-          evaluatedProperties.add(propertyName);
-        }
-      }
-
-      if (siblingKeywords.has("https://json-schema.org/keyword/patternProperties")) {
-        const patternPropertiesValue = /** @type [string,string][] */(siblingKeywords.get("https://json-schema.org/keyword/patternProperties"));
-        for (const [pattern] of patternPropertiesValue) {
-          const regex = new RegExp(pattern);
-          for (const [propertyNameNode] of Instance.entries(instance)) {
-            const propertyName = /** @type string */ (Instance.value(propertyNameNode));
-            if (regex.test(propertyName)) {
-              evaluatedProperties.add(propertyName);
-            }
-          }
-        }
-      }
-
-      if (siblingKeywords.has("https://json-schema.org/keyword/additionalProperties")) {
-        for (const [propertyNameNode] of Instance.entries(instance)) {
-          const propertyName = /** @type string */ (Instance.value(propertyNameNode));
-          evaluatedProperties.add(propertyName);
-        }
-      }
-    }
-
-    // Iterate through the instance and apply the schema to any unevaluated properties.
     for (const [propertyNameNode, propertyValue] of Instance.entries(instance)) {
       const propertyName = /** @type string */ (Instance.value(propertyNameNode));
-      if (!evaluatedProperties.has(propertyName)) {
-        outputs.push(evaluateSchema(unevaluatedPropertiesSchemaLocation, ast, propertyValue, errorIndex));
+      if (!context.evaluatedProperties.has(propertyName)) {
+        outputs.push(evaluateSchema(unevaluatedPropertiesSchemaLocation, ast, propertyValue, errorIndex, context));
       }
     }
-
     return outputs;
   },
   simpleApplicator: true
@@ -568,5 +520,6 @@ export async function normalizedErrorOuput(instance, errorOutput, subjectUri) {
   const errorIndex = await constructErrorIndex(errorOutput, schema);
   const { schemaUri, ast } = await compile(schema);
   const value = Instance.fromJs(instance);
-  return evaluateSchema(schemaUri, ast, value, errorIndex);
+  const context = new EvaluationContext();
+  return evaluateSchema(schemaUri, ast, value, errorIndex, context);
 }
