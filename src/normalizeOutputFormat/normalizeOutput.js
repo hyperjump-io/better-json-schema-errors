@@ -249,7 +249,7 @@ keywordHandlers["https://json-schema.org/keyword/not"] = {
 };
 
 keywordHandlers["https://json-schema.org/keyword/patternProperties"] = {
-  evaluate(/** @type [string,string][] */ patternProperties, ast, instance, errorIndex, context) {
+  evaluate(/** @type [RegExp, string][] */ patternProperties, ast, instance, errorIndex, context) {
     /** @type NormalizedOutput[] */
     const outputs = [];
     if (Instance.typeOf(instance) !== "object") {
@@ -286,6 +286,7 @@ keywordHandlers["https://json-schema.org/keyword/propertyNames"] = {
   },
   simpleApplicator: true
 };
+
 /**
  * @typedef {[
  *  regexExp: RegExp,
@@ -308,7 +309,8 @@ keywordHandlers["https://json-schema.org/keyword/additionalProperties"] = {
       outputs.push(evaluateSchema(additionalProperties, ast, property, errorIndex, context));
     }
     return outputs;
-  }
+  },
+  simpleApplicator: true
 };
 
 keywordHandlers["https://json-schema.org/keyword/unevaluatedItems"] = {
@@ -361,31 +363,37 @@ keywordHandlers["https://json-schema.org/keyword/type"] = {
     return true;
   }
 };
+
 keywordHandlers["https://json-schema.org/keyword/enum"] = {
   appliesTo() {
     return true;
   }
 };
+
 keywordHandlers["https://json-schema.org/keyword/const"] = {
   appliesTo() {
     return true;
   }
 };
+
 keywordHandlers["https://json-schema.org/keyword/required"] = {
   appliesTo(type) {
     return type === "object";
   }
 };
+
 keywordHandlers["https://json-schema.org/keyword/maxProperties"] = {
   appliesTo(type) {
     return type === "object";
   }
 };
+
 keywordHandlers["https://json-schema.org/keyword/minProperties"] = {
   appliesTo(type) {
     return type === "object";
   }
 };
+
 keywordHandlers["https://json-schema.org/keyword/minLength"] = {
   appliesTo(type) {
     return type === "string";
@@ -439,21 +447,25 @@ keywordHandlers["https://json-schema.org/keyword/maxItems"] = {
     return type === "array";
   }
 };
+
 keywordHandlers["https://json-schema.org/keyword/minItems"] = {
   appliesTo(type) {
     return type === "array";
   }
 };
+
 keywordHandlers["https://json-schema.org/keyword/uniqueItems"] = {
   appliesTo(type) {
     return type === "array";
   }
 };
+
 keywordHandlers["https://json-schema.org/keyword/maxContains"] = {
   appliesTo(type) {
     return type === "array";
   }
 };
+
 keywordHandlers["https://json-schema.org/keyword/minContains"] = {
   appliesTo(type) {
     return type === "array";
@@ -492,7 +504,6 @@ export const constructErrorIndex = async (outputUnit, schema, errorIndex = {}) =
 };
 
 /**
- * Convert keywordLocation to absoluteKeywordLocation
  * @param {BrowserType<SchemaDocument>} schema
  * @param {string} keywordLocation
  * @returns {Promise<string>}

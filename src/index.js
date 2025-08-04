@@ -536,26 +536,21 @@ const errorHandlers = [
   async (normalizedErrors, instance) => {
     /** @type ErrorObject[] */
     const errors = [];
-
-    if (normalizedErrors["https://json-schema.org/keyword/additionalProperties"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/additionalProperties"]) {
-        for (const output of /** @type NormalizedOutput[] */(normalizedErrors["https://json-schema.org/keyword/additionalProperties"][schemaLocation])) {
-          const instanceLocationOfError = Object.keys(output)[0];
-          if (instanceLocationOfError) {
-            const propertyName = instanceLocationOfError.split("/").pop();
-
-            errors.push({
-              message: `The property '${propertyName}' is not allowed.`,
-              // The location of the error is the property itself.
-              instanceLocation: Instance.uri(instance),
-              schemaLocation: schemaLocation
-            });
-          }
+    if (normalizedErrors["https://json-schema.org/validation"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/validation"]) {
+        if (!normalizedErrors["https://json-schema.org/validation"][schemaLocation] && schemaLocation.endsWith("/additionalProperties")) {
+          const notAllowedValue = Instance.uri(instance).split("/").pop();
+          errors.push({
+            message: `The property "${notAllowedValue}" is not allowed.`,
+            instanceLocation: Instance.uri(instance),
+            schemaLocation: schemaLocation
+          });
         }
       }
     }
     return errors;
   },
+
   async (normalizedErrors, instance) => {
     /** @type ErrorObject[] */
     const errors = [];

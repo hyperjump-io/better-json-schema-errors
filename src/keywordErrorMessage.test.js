@@ -909,7 +909,7 @@ describe("Error messages", async () => {
             {
               valid: false,
               instanceLocation: "#/0",
-              absoluteKeywordLocation: "https://example.com/main#/contains/multipleOf"
+              absoluteKeywordLocation: "https://example.com/main#/contains/type"
             },
             {
               valid: false,
@@ -934,8 +934,8 @@ describe("Error messages", async () => {
       },
       {
         instanceLocation: "#/0",
-        message: "The instance should be of multiple of 2.",
-        schemaLocation: "https://example.com/main#/contains/multipleOf"
+        message: localization.getTypeErrorMessage("number", "string"),
+        schemaLocation: "https://example.com/main#/contains/type"
       },
       {
         instanceLocation: "#/1",
@@ -1013,13 +1013,13 @@ describe("Error messages", async () => {
         const: "Prohibited"
       }
     }, schemaUri);
-    const instance = -3;
+    const instance = "Prohibited";
     const errorOutput = {
       valid: false,
       errors: [
         {
           valid: false,
-          absoluteKeywordLocation: "https://example.com/main#/not/const",
+          absoluteKeywordLocation: "https://example.com/main#/not",
           instanceLocation: "#"
         }
       ]
@@ -1105,7 +1105,8 @@ describe("Error messages", async () => {
     const instance = {
       known_property: "This is allowed.",
       known_pattern_abc: "This is also allowed.",
-      unknown_property: "This property is not allowed."
+      unknown_property: "This property is not allowed.",
+      unknown_property1: "This property is not allowed."
     };
 
     const errorOutput = {
@@ -1114,7 +1115,12 @@ describe("Error messages", async () => {
         {
           valid: false,
           absoluteKeywordLocation: "https://example.com/main#/additionalProperties",
-          instanceLocation: "#"
+          instanceLocation: "#/unkownProperty"
+        },
+        {
+          valid: false,
+          absoluteKeywordLocation: "https://example.com/main#/additionalProperties",
+          instanceLocation: "#/unkownProperty1"
         }
       ]
     };
@@ -1123,8 +1129,13 @@ describe("Error messages", async () => {
 
     expect(result.errors).to.eql([
       {
-        instanceLocation: "#",
-        message: "The property 'unknown_property' is not allowed.",
+        instanceLocation: "#/unknown_property",
+        message: `The property "unknown_property" is not allowed.`,
+        schemaLocation: "https://example.com/main#/additionalProperties"
+      },
+      {
+        instanceLocation: "#/unknown_property1",
+        message: `The property "unknown_property1" is not allowed.`,
         schemaLocation: "https://example.com/main#/additionalProperties"
       }
     ]);
