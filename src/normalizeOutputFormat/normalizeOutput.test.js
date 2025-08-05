@@ -2,11 +2,13 @@ import { afterEach, describe, expect, test } from "vitest";
 import { normalizedErrorOuput } from "./normalizeOutput.js";
 import { betterJsonSchemaErrors } from "../index.js";
 import { registerSchema, unregisterSchema } from "@hyperjump/json-schema/draft-2020-12";
+import { Localization } from "../localization.js";
 /**
  * @import { OutputFormat} from "../index.d.ts"
  */
 
-describe("Error Output Normalization", () => {
+describe("Error Output Normalization", async () => {
+  const localization = await Localization.forLocale("en-US");
   const schemaUri = "https://example.com/main";
   const schemaUri1 = "https://example.com/polygon";
 
@@ -38,7 +40,7 @@ describe("Error Output Normalization", () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minLength",
       instanceLocation: "#",
-      message: "The instance should be at least 3 characters"
+      message: localization.getMinLengthErrorMessage(3)
     }
     ]);
   });
@@ -66,7 +68,7 @@ describe("Error Output Normalization", () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minLength",
       instanceLocation: "#",
-      message: "The instance should be at least 3 characters"
+      message: localization.getMinLengthErrorMessage(3)
     }]);
   });
 
@@ -93,7 +95,7 @@ describe("Error Output Normalization", () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minLength",
       instanceLocation: "#",
-      message: "The instance should be at least 3 characters"
+      message: localization.getMinLengthErrorMessage(3)
     }]);
   });
 
@@ -367,7 +369,7 @@ describe("Error Output Normalization", () => {
       {
         schemaLocation: "https://example.com/main#/$defs/lengthDefinition/minLength",
         instanceLocation: "#/foo",
-        message: "The instance should be at least 3 characters"
+        message: localization.getMinLengthErrorMessage(3)
       }
     ]);
   });

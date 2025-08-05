@@ -300,6 +300,37 @@ keywordHandlers["https://json-schema.org/keyword/additionalProperties"] = {
   simpleApplicator: true
 };
 
+keywordHandlers["https://json-schema.org/keyword/unevaluatedItems"] = {
+  evaluate(/** @type string[] */ [, unevaluatedItemsSchemaLocation], ast, instance, errorIndex) {
+    /** @type NormalizedOutput[] */
+    const outputs = [];
+    if (Instance.typeOf(instance) !== "array") {
+      return outputs;
+    }
+    for (const itemNode of Instance.iter(instance)) {
+      outputs.push(evaluateSchema(unevaluatedItemsSchemaLocation, ast, itemNode, errorIndex));
+    }
+    return outputs;
+  },
+  simpleApplicator: true
+};
+
+keywordHandlers["https://json-schema.org/keyword/unevaluatedProperties"] = {
+  evaluate(/** @type string[] */ [, unevaluatedPropertiesSchemaLocation], ast, instance, errorIndex) {
+    /** @type NormalizedOutput[] */
+    const outputs = [];
+    if (Instance.typeOf(instance) !== "object") {
+      return outputs;
+    }
+
+    for (const [, propertyValue] of Instance.entries(instance)) {
+      outputs.push(evaluateSchema(unevaluatedPropertiesSchemaLocation, ast, propertyValue, errorIndex));
+    }
+    return outputs;
+  },
+  simpleApplicator: true
+};
+
 keywordHandlers["https://json-schema.org/keyword/definitions"] = {
   appliesTo() {
     return false;
