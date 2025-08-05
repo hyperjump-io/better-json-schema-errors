@@ -2,12 +2,14 @@ import { afterEach, describe, test, expect } from "vitest";
 import { betterJsonSchemaErrors } from "./index.js";
 import { registerSchema } from "@hyperjump/json-schema/draft-2020-12";
 import { unregisterSchema } from "@hyperjump/json-schema";
+import { Localization } from "./localization.js";
 
 /**
  * @import { OutputFormat} from "./index.d.ts"
  */
 
-describe("Error messages", () => {
+describe("Error messages", async () => {
+  const localization = await Localization.forLocale("en-US");
   const schemaUri = "https://example.com/main";
 
   afterEach(() => {
@@ -93,7 +95,7 @@ describe("Error messages", () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/type",
       instanceLocation: "#",
-      message: `The instance should be of type "number" but found "string".`
+      message: localization.getTypeErrorMessage("number", "string")
     }
     ]);
   });
@@ -543,17 +545,16 @@ describe("Error messages", () => {
         }
       ]
     };
-
     const result = await betterJsonSchemaErrors(instance, output, schemaUri);
     expect(result.errors).to.eql([
       {
         instanceLocation: "#/2",
-        message: `The instance should be of type "number" but found "string".`,
+        message: localization.getTypeErrorMessage("number", "string"),
         schemaLocation: "https://example.com/main#/items/type"
       },
       {
         instanceLocation: "#/3",
-        message: `The instance should be of type "number" but found "string".`,
+        message: localization.getTypeErrorMessage("number", "string"),
         schemaLocation: "https://example.com/main#/items/type"
       }
     ]);
@@ -594,12 +595,12 @@ describe("Error messages", () => {
     expect(result.errors).to.eql([
       {
         instanceLocation: "#/1",
-        message: `The instance should be of type "boolean" but found "string".`,
+        message: localization.getTypeErrorMessage("boolean", "string"),
         schemaLocation: "https://example.com/main#/prefixItems/1/type"
       },
       {
         instanceLocation: "#/2",
-        message: `The instance should be of type "string" but found "number".`,
+        message: localization.getTypeErrorMessage("string", "number"),
         schemaLocation: "https://example.com/main#/prefixItems/2/type"
       }]);
   });
@@ -638,7 +639,7 @@ describe("Error messages", () => {
       {
         schemaLocation: "https://example.com/main#/anyOf",
         instanceLocation: "#",
-        message: `The instance must be a string, number. Found 'boolean'.`
+        message: localization.getTypeErrorMessage(["string", "number"], "boolean")
       }
     ]);
   });
@@ -895,7 +896,7 @@ describe("Error messages", () => {
       },
       minContains: 1
     }, schemaUri);
-    const instance = [3, 3, 5];
+    const instance = ["", 3, 5];
     const output = {
       valid: false,
       errors: [
@@ -908,7 +909,7 @@ describe("Error messages", () => {
             {
               valid: false,
               instanceLocation: "#/0",
-              absoluteKeywordLocation: "https://example.com/main#/contains/multipleOf"
+              absoluteKeywordLocation: "https://example.com/main#/contains/type"
             },
             {
               valid: false,
@@ -928,8 +929,23 @@ describe("Error messages", () => {
     expect(result.errors).to.eql([
       {
         instanceLocation: "#",
-        message: "TODO - contains",
+        message: "A required value is missing from the list",
         schemaLocation: "https://example.com/main#/contains"
+      },
+      {
+        instanceLocation: "#/0",
+        message: localization.getTypeErrorMessage("number", "string"),
+        schemaLocation: "https://example.com/main#/contains/type"
+      },
+      {
+        instanceLocation: "#/1",
+        message: "The instance should be of multiple of 2.",
+        schemaLocation: "https://example.com/main#/contains/multipleOf"
+      },
+      {
+        instanceLocation: "#/2",
+        message: "The instance should be of multiple of 2.",
+        schemaLocation: "https://example.com/main#/contains/multipleOf"
       }
     ]);
   });
@@ -990,11 +1006,170 @@ describe("Error messages", () => {
     ]);
   });
 
-  // not
-  // dependentRequired
-  // patternProperties
-  // propertyNames
-  // additionalProperties
-  // unevaluatedProperties
-  // unevaluatedItems
+  test("not case", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      not: {
+        const: "Prohibited"
+      }
+    }, schemaUri);
+    const instance = "Prohibited";
+    const errorOutput = {
+      valid: false,
+      errors: [
+        {
+          valid: false,
+          absoluteKeywordLocation: "https://example.com/main#/not",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
+    expect(result.errors).to.eql([
+      {
+        instanceLocation: "#",
+        message: `The instance is not allowed to be used in this schema.`,
+        schemaLocation: "https://example.com/main#/not"
+      }
+    ]);
+  });
+
+  test("patternProperties case", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      patternProperties: {
+        "^[a-z]+$": { type: "integer" }
+      }
+    }, schemaUri);
+    const instance = { foo: "should have been an integer" };
+    const errorOutput = {
+      valid: false,
+      errors: [
+        {
+          valid: false,
+          absoluteKeywordLocation: "https://example.com/main#/patternProperties/%5E%5Ba-z%5D+$/type",
+          instanceLocation: "#/foo"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
+    expect(result.errors).to.eql([
+      {
+        instanceLocation: "#/foo",
+        message: localization.getTypeErrorMessage("integer", "string"),
+        schemaLocation: "https://example.com/main#/patternProperties/%5E%5Ba-z%5D+$/type"
+      }
+    ]);
+  });
+
+  test("propertyName case", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      propertyNames: { pattern: "^[a-z]*$" }
+    }, schemaUri);
+    const instance = { Foo: 1 };
+    const errorOutput = {
+      valid: false,
+      errors: [
+        {
+          valid: false,
+          absoluteKeywordLocation: "https://example.com/main#/propertyNames/pattern",
+          instanceLocation: "#*/Foo"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
+    expect(result.errors).to.eql([
+      {
+        instanceLocation: "#*/Foo",
+        message: "The instance should match the pattern: ^[a-z]*$.",
+        schemaLocation: "https://example.com/main#/propertyNames/pattern"
+      }
+    ]);
+  });
+  test("should fail when an additional property is found and additionalProperties is false", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      properties: {
+        known_property: { type: "string" }
+      },
+      patternProperties: {
+        "^known_pattern_": { type: "string" }
+      },
+      additionalProperties: false
+    }, schemaUri);
+
+    const instance = {
+      known_property: "This is allowed.",
+      known_pattern_abc: "This is also allowed.",
+      unknown_property: "This property is not allowed.",
+      unknown_property1: "This property is not allowed."
+    };
+
+    const errorOutput = {
+      valid: false,
+      errors: [
+        {
+          valid: false,
+          absoluteKeywordLocation: "https://example.com/main#/additionalProperties",
+          instanceLocation: "#/unkownProperty"
+        },
+        {
+          valid: false,
+          absoluteKeywordLocation: "https://example.com/main#/additionalProperties",
+          instanceLocation: "#/unkownProperty1"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
+
+    expect(result.errors).to.eql([
+      {
+        instanceLocation: "#/unknown_property",
+        message: `The property "unknown_property" is not allowed.`,
+        schemaLocation: "https://example.com/main#/additionalProperties"
+      },
+      {
+        instanceLocation: "#/unknown_property1",
+        message: `The property "unknown_property1" is not allowed.`,
+        schemaLocation: "https://example.com/main#/additionalProperties"
+      }
+    ]);
+  });
+
+  test("dependentRequired case", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      dependentRequired: {
+        foo: ["bar", "baz"]
+      }
+    }, schemaUri);
+
+    const instance = { foo: 1, bar: 2 };
+
+    const errorOutput = {
+      valid: false,
+      errors: [
+        {
+          valid: false,
+          absoluteKeywordLocation: "https://example.com/main#/dependentRequired",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
+
+    expect(result.errors).to.eql([
+      {
+        instanceLocation: "#",
+        message: `Property "foo" requires property(s): baz.`,
+        schemaLocation: "https://example.com/main#/dependentRequired"
+      }
+    ]);
+  });
 });

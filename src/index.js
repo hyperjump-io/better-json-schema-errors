@@ -3,6 +3,7 @@ import { getSchema } from "@hyperjump/json-schema/experimental";
 import * as Instance from "@hyperjump/json-schema/instance/experimental";
 import leven from "leven";
 import { normalizedErrorOuput } from "./normalizeOutputFormat/normalizeOutput.js";
+import { Localization } from "./localization.js";
 
 /**
  * @import { Browser } from "@hyperjump/browser";
@@ -12,6 +13,8 @@ import { normalizedErrorOuput } from "./normalizeOutputFormat/normalizeOutput.js
  * @import {betterJsonSchemaErrors, NormalizedError, OutputUnit, BetterJsonSchemaErrors, ErrorObject } from "./index.d.ts"
  * @import { NormalizedOutput, InstanceOutput } from "./normalizeOutputFormat/normalizeOutput.js"
  */
+
+const localization = await Localization.forLocale("en-US");
 
 /** @type betterJsonSchemaErrors */
 export async function betterJsonSchemaErrors(instance, errorOutput, schemaUri) {
@@ -76,7 +79,7 @@ const errorHandlers = [
             }
           }
           errors.push({
-            message: `The instance must be a ${[...expectedTypes].join(", ")}. Found '${Instance.typeOf(instance)}'.`,
+            message: localization.getTypeErrorMessage([...expectedTypes], Instance.typeOf(instance)),
             instanceLocation: Instance.uri(instance),
             schemaLocation: schemaLocation
           });
@@ -148,7 +151,7 @@ const errorHandlers = [
         if (!normalizedErrors["https://json-schema.org/keyword/type"][schemaLocation]) {
           const keyword = await getSchema(schemaLocation);
           errors.push({
-            message: `The instance should be of type "${Schema.value(keyword)}" but found "${Instance.typeOf(instance)}".`,
+            message: localization.getTypeErrorMessage(Schema.value(keyword), Instance.typeOf(instance)),
             instanceLocation: Instance.uri(instance),
             schemaLocation: schemaLocation
           });
@@ -490,16 +493,36 @@ const errorHandlers = [
     return errors;
   },
 
+  async (normalizedErrors, instance) => {
+    /** @type ErrorObject[] */
+    const errors = [];
+    if (normalizedErrors["https://json-schema.org/keyword/contains"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/contains"]) {
+        errors.push({
+          message: `A required value is missing from the list`,
+          instanceLocation: Instance.uri(instance),
+          schemaLocation: schemaLocation
+        });
+        const containsNodes = /** @type NormalizedOutput[] */(normalizedErrors["https://json-schema.org/keyword/contains"][schemaLocation]);
+        for (const errorOutput of containsNodes) {
+          const containsSubErrors = await getErrors(errorOutput, instance);
+          errors.push(...containsSubErrors);
+        }
+      }
+    }
+
+    return errors;
+  },
+
   // eslint-disable-next-line @typescript-eslint/require-await
   async (normalizedErrors, instance) => {
     /** @type ErrorObject[] */
     const errors = [];
 
-    if (normalizedErrors["https://json-schema.org/keyword/contains"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/contains"]) {
-        // const keyword = await getSchema(schemaLocation);
+    if (normalizedErrors["https://json-schema.org/keyword/not"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/not"]) {
         errors.push({
-          message: `TODO - contains`,
+          message: `The instance is not allowed to be used in this schema.`,
           instanceLocation: Instance.uri(instance),
           schemaLocation: schemaLocation
         });
@@ -507,31 +530,54 @@ const errorHandlers = [
     }
 
     return errors;
+  },
+
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async (normalizedErrors, instance) => {
+    /** @type ErrorObject[] */
+    const errors = [];
+    if (normalizedErrors["https://json-schema.org/validation"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/validation"]) {
+        if (!normalizedErrors["https://json-schema.org/validation"][schemaLocation] && schemaLocation.endsWith("/additionalProperties")) {
+          const notAllowedValue = Instance.uri(instance).split("/").pop();
+          errors.push({
+            message: `The property "${notAllowedValue}" is not allowed.`,
+            instanceLocation: Instance.uri(instance),
+            schemaLocation: schemaLocation
+          });
+        }
+      }
+    }
+    return errors;
+  },
+
+  async (normalizedErrors, instance) => {
+    /** @type ErrorObject[] */
+    const errors = [];
+
+    if (normalizedErrors["https://json-schema.org/keyword/dependentRequired"]) {
+      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/dependentRequired"]) {
+        if (!normalizedErrors["https://json-schema.org/keyword/dependentRequired"][schemaLocation]) {
+          const keyword = await getSchema(schemaLocation);
+          const dependentRequired = /** @type {Record<string, string[]>} */(Schema.value(keyword));
+          for (const propertyName in dependentRequired) {
+            if (Instance.has(propertyName, instance)) {
+              const required = dependentRequired[propertyName];
+              const missing = required.filter((prop) => !Instance.has(prop, instance));
+
+              if (missing.length > 0) {
+                errors.push({
+                  message: `Property "${propertyName}" requires property(s): ${missing.join(", ")}.`,
+                  instanceLocation: Instance.uri(instance),
+                  schemaLocation: schemaLocation
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return errors;
   }
 ];
-
-// /** @type (value: Json) => "null" | "boolean" | "number" | "string" | "array" | "object" | "undefined" */
-// const jsonTypeOf = (value) => {
-//   const jsType = typeof value;
-
-//   switch (jsType) {
-//     case "number":
-//     case "string":
-//     case "boolean":
-//     case "undefined":
-//       return jsType;
-//     case "object":
-//       if (Array.isArray(value)) {
-//         return "array";
-//       } else if (value === null) {
-//         return "null";
-//       } else if (Object.getPrototypeOf(value) === Object.prototype) {
-//         return "object";
-//       }
-//     default: {
-//       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-//       const type = jsType === "object" ? Object.getPrototypeOf(value).constructor.name ?? "anonymous" : jsType;
-//       throw Error(`Not a JSON compatible type: ${type}`);
-//     }
-//   }
-// };
