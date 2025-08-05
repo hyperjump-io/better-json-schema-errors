@@ -111,7 +111,7 @@ const errorHandlers = [
         if (!normalizedErrors["https://json-schema.org/keyword/minLength"][schemaLocation]) {
           const keyword = await getSchema(schemaLocation);
           errors.push({
-            message: `The instance should be at least ${Schema.value(keyword)} characters`,
+            message: localization.getMinLengthErrorMessage(Schema.value(keyword)),
             instanceLocation: Instance.uri(instance),
             schemaLocation: schemaLocation
           });
@@ -131,7 +131,7 @@ const errorHandlers = [
         if (!normalizedErrors["https://json-schema.org/keyword/maxLength"][schemaLocation]) {
           const keyword = await getSchema(schemaLocation);
           errors.push({
-            message: `The instance should be atmost ${Schema.value(keyword)} characters long.`,
+            message: localization.getMaxLengthErrorMessage(Schema.value(keyword)),
             instanceLocation: Instance.uri(instance),
             schemaLocation: schemaLocation
           });
@@ -171,7 +171,7 @@ const errorHandlers = [
         if (!normalizedErrors["https://json-schema.org/keyword/maximum"][schemaLocation]) {
           const keyword = await getSchema(schemaLocation);
           errors.push({
-            message: `The instance should be less than or equal to ${Schema.value(keyword)}.`,
+            message: localization.getMaximumErrorMessage(Schema.value(keyword)),
             instanceLocation: Instance.uri(instance),
             schemaLocation: schemaLocation
           });
@@ -191,7 +191,7 @@ const errorHandlers = [
         if (!normalizedErrors["https://json-schema.org/keyword/minimum"][schemaLocation]) {
           const keyword = await getSchema(schemaLocation);
           errors.push({
-            message: `The instance should be greater than or equal to ${Schema.value(keyword)}.`,
+            message: localization.getMinimumErrorMessage(Schema.value(keyword)),
             instanceLocation: Instance.uri(instance),
             schemaLocation: schemaLocation
           });
@@ -211,7 +211,7 @@ const errorHandlers = [
         if (!normalizedErrors["https://json-schema.org/keyword/exclusiveMinimum"][schemaLocation]) {
           const keyword = await getSchema(schemaLocation);
           errors.push({
-            message: `The instance should be greater than ${Schema.value(keyword)}.`,
+            message: localization.getExclusiveMinimumErrorMessage(Schema.value(keyword)),
             instanceLocation: Instance.uri(instance),
             schemaLocation: schemaLocation
           });
@@ -231,7 +231,7 @@ const errorHandlers = [
         if (!normalizedErrors["https://json-schema.org/keyword/exclusiveMaximum"][schemaLocation]) {
           const keyword = await getSchema(schemaLocation);
           errors.push({
-            message: `The instance should be less than ${Schema.value(keyword)}.`,
+            message: localization.getExclusiveMaximumErrorMessage(Schema.value(keyword)),
             instanceLocation: Instance.uri(instance),
             schemaLocation: schemaLocation
           });
@@ -256,7 +256,7 @@ const errorHandlers = [
             required.delete(propertyName);
           }
           errors.push({
-            message: `"${Instance.uri(instance)}" is missing required property(s): ${[...required].join(", ")}.`,
+            message: localization.getRequiredErrorMessage(Instance.uri(instance), [...required]),
             instanceLocation: Instance.uri(instance),
             schemaLocation: schemaLocation
           });
@@ -276,7 +276,7 @@ const errorHandlers = [
         if (!normalizedErrors["https://json-schema.org/keyword/multipleOf"][schemaLocation]) {
           const keyword = await getSchema(schemaLocation);
           errors.push({
-            message: `The instance should be of multiple of ${Schema.value(keyword)}.`,
+            message: localization.getMultipleOfErrorMessage(Schema.value(keyword)),
             instanceLocation: Instance.uri(instance),
             schemaLocation: schemaLocation
           });
@@ -296,7 +296,7 @@ const errorHandlers = [
         if (!normalizedErrors["https://json-schema.org/keyword/maxProperties"][schemaLocation]) {
           const keyword = await getSchema(schemaLocation);
           errors.push({
-            message: `The instance should have maximum ${Schema.value(keyword)} properties.`,
+            message: localization.getMaxPropertiesErrorMessage(Schema.value(keyword)),
             instanceLocation: Instance.uri(instance),
             schemaLocation: schemaLocation
           });
@@ -316,7 +316,7 @@ const errorHandlers = [
         if (!normalizedErrors["https://json-schema.org/keyword/minProperties"][schemaLocation]) {
           const keyword = await getSchema(schemaLocation);
           errors.push({
-            message: `The instance should have minimum ${Schema.value(keyword)} properties.`,
+            message: localization.getMinPropertiesErrorMessage(Schema.value(keyword)),
             instanceLocation: Instance.uri(instance),
             schemaLocation: schemaLocation
           });
@@ -336,7 +336,7 @@ const errorHandlers = [
         if (!normalizedErrors["https://json-schema.org/keyword/const"][schemaLocation]) {
           const keyword = await getSchema(schemaLocation);
           errors.push({
-            message: `The instance should be equal to ${Schema.value(keyword)}.`,
+            message: localization.getConstErrorMessage(Schema.value(keyword)),
             instanceLocation: Instance.uri(instance),
             schemaLocation: schemaLocation
           });
@@ -366,23 +366,25 @@ const errorHandlers = [
               weight: leven(value, currentValue)
             }))
             .sort((a, b) => a.weight - b.weight)[0];
-
-          let suggestion = "";
+          let message;
           if (
             allowedValues.length === 1
             || (bestMatch && bestMatch.weight < bestMatch.value.length)
           ) {
-            suggestion = ` Did you mean "${bestMatch.value}"?`;
-            errors.push({
-              message: `Unexpected value "${currentValue}". ${suggestion}`,
-              instanceLocation: Instance.uri(instance),
-              schemaLocation: schemaLocation
+            message = localization.getEnumErrorMessage({
+              variant: "suggestion",
+              instanceValue: currentValue,
+              suggestion: bestMatch.value
             });
-            continue;
+          } else {
+            message = localization.getEnumErrorMessage({
+              variant: "fallback",
+              instanceValue: currentValue,
+              allowedValues: allowedValues
+            });
           }
-
           errors.push({
-            message: `Unexpected value "${currentValue}". Expected one of: ${allowedValues.join(",")}.`,
+            message,
             instanceLocation: Instance.uri(instance),
             schemaLocation: schemaLocation
           });
@@ -402,7 +404,7 @@ const errorHandlers = [
         if (!normalizedErrors["https://json-schema.org/keyword/maxItems"][schemaLocation]) {
           const keyword = await getSchema(schemaLocation);
           errors.push({
-            message: `The instance should contain maximum ${Schema.value(keyword)} items in the array.`,
+            message: localization.getMaxItemsErrorMessage(Schema.value(keyword)),
             instanceLocation: Instance.uri(instance),
             schemaLocation: schemaLocation
           });
@@ -422,7 +424,7 @@ const errorHandlers = [
         if (!normalizedErrors["https://json-schema.org/keyword/minItems"][schemaLocation]) {
           const keyword = await getSchema(schemaLocation);
           errors.push({
-            message: `The instance should contain minimum ${Schema.value(keyword)} items in the array.`,
+            message: localization.getMinItemsErrorMessage(Schema.value(keyword)),
             instanceLocation: Instance.uri(instance),
             schemaLocation: schemaLocation
           });
@@ -442,7 +444,7 @@ const errorHandlers = [
       for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/uniqueItems"]) {
         if (!normalizedErrors["https://json-schema.org/keyword/uniqueItems"][schemaLocation]) {
           errors.push({
-            message: `The instance should have unique items in the array.`,
+            message: localization.getUniqueItemsErrorMessage(),
             instanceLocation: Instance.uri(instance),
             schemaLocation: schemaLocation
           });
@@ -462,7 +464,7 @@ const errorHandlers = [
         if (!normalizedErrors["https://json-schema.org/keyword/format"][schemaLocation]) {
           const keyword = await getSchema(schemaLocation);
           errors.push({
-            message: `The instance should match the format: ${Schema.value(keyword)}.`,
+            message: localization.getFormatErrorMessage(Schema.value(keyword)),
             instanceLocation: Instance.uri(instance),
             schemaLocation: schemaLocation
           });
@@ -482,7 +484,7 @@ const errorHandlers = [
         if (!normalizedErrors["https://json-schema.org/keyword/pattern"][schemaLocation]) {
           const keyword = await getSchema(schemaLocation);
           errors.push({
-            message: `The instance should match the pattern: ${Schema.value(keyword)}.`,
+            message: localization.getPatternErrorMessage(Schema.value(keyword)),
             instanceLocation: Instance.uri(instance),
             schemaLocation: schemaLocation
           });
@@ -499,7 +501,7 @@ const errorHandlers = [
     if (normalizedErrors["https://json-schema.org/keyword/contains"]) {
       for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/contains"]) {
         errors.push({
-          message: `A required value is missing from the list`,
+          message: localization.getContainsErrorMessage(),
           instanceLocation: Instance.uri(instance),
           schemaLocation: schemaLocation
         });
@@ -522,7 +524,7 @@ const errorHandlers = [
     if (normalizedErrors["https://json-schema.org/keyword/not"]) {
       for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/not"]) {
         errors.push({
-          message: `The instance is not allowed to be used in this schema.`,
+          message: localization.getNotErrorMessage(),
           instanceLocation: Instance.uri(instance),
           schemaLocation: schemaLocation
         });
@@ -539,9 +541,9 @@ const errorHandlers = [
     if (normalizedErrors["https://json-schema.org/validation"]) {
       for (const schemaLocation in normalizedErrors["https://json-schema.org/validation"]) {
         if (!normalizedErrors["https://json-schema.org/validation"][schemaLocation] && schemaLocation.endsWith("/additionalProperties")) {
-          const notAllowedValue = Instance.uri(instance).split("/").pop();
+          const notAllowedValue = /** @type string */(Instance.uri(instance).split("/").pop());
           errors.push({
-            message: `The property "${notAllowedValue}" is not allowed.`,
+            message: localization.getAdditionalPropertiesErrorMessage(notAllowedValue),
             instanceLocation: Instance.uri(instance),
             schemaLocation: schemaLocation
           });
@@ -567,7 +569,7 @@ const errorHandlers = [
 
               if (missing.length > 0) {
                 errors.push({
-                  message: `Property "${propertyName}" requires property(s): ${missing.join(", ")}.`,
+                  message: localization.getDependentRequiredErrorMessage(propertyName, [...missing]),
                   instanceLocation: Instance.uri(instance),
                   schemaLocation: schemaLocation
                 });

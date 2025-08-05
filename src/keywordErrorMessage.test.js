@@ -39,7 +39,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minLength",
       instanceLocation: "#",
-      message: "The instance should be at least 3 characters"
+      message: localization.getMinLengthErrorMessage(3)
     }
     ]);
   });
@@ -67,7 +67,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/maxLength",
       instanceLocation: "#",
-      message: "The instance should be atmost 3 characters long."
+      message: localization.getMaxLengthErrorMessage(3)
     }
     ]);
   });
@@ -123,7 +123,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/maximum",
       instanceLocation: "#",
-      message: `The instance should be less than or equal to 10.`
+      message: localization.getMaximumErrorMessage(10)
     }
     ]);
   });
@@ -151,7 +151,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minimum",
       instanceLocation: "#",
-      message: `The instance should be greater than or equal to 10.`
+      message: localization.getMinimumErrorMessage(10)
     }
     ]);
   });
@@ -179,7 +179,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/exclusiveMaximum",
       instanceLocation: "#",
-      message: `The instance should be less than 10.`
+      message: localization.getExclusiveMaximumErrorMessage(10)
     }
     ]);
   });
@@ -207,7 +207,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/exclusiveMinimum",
       instanceLocation: "#",
-      message: `The instance should be greater than 10.`
+      message: localization.getExclusiveMinimumErrorMessage(10)
     }
     ]);
   });
@@ -236,7 +236,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/required",
       instanceLocation: "#",
-      message: `"#" is missing required property(s): baz.`
+      message: localization.getRequiredErrorMessage("#", ["baz"])
     }
     ]);
   });
@@ -265,7 +265,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/multipleOf",
       instanceLocation: "#",
-      message: `The instance should be of multiple of 5.`
+      message: localization.getMultipleOfErrorMessage(5)
     }
     ]);
   });
@@ -294,7 +294,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/maxProperties",
       instanceLocation: "#",
-      message: `The instance should have maximum 2 properties.`
+      message: localization.getMaxPropertiesErrorMessage(2)
     }
     ]);
   });
@@ -323,7 +323,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minProperties",
       instanceLocation: "#",
-      message: `The instance should have minimum 2 properties.`
+      message: localization.getMinPropertiesErrorMessage(2)
     }
     ]);
   });
@@ -352,7 +352,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/const",
       instanceLocation: "#",
-      message: `The instance should be equal to 2.`
+      message: localization.getConstErrorMessage(2)
     }
     ]);
   });
@@ -381,7 +381,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/enum",
       instanceLocation: "#",
-      message: `Unexpected value "rwd".  Did you mean "red"?`
+      message: localization.getEnumErrorMessage({ variant: "suggestion", instanceValue: "rwd", suggestion: "red" })
     }]);
   });
 
@@ -408,7 +408,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/maxItems",
       instanceLocation: "#",
-      message: `The instance should contain maximum 3 items in the array.`
+      message: localization.getMaxItemsErrorMessage(3)
     }
     ]);
   });
@@ -436,7 +436,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minItems",
       instanceLocation: "#",
-      message: `The instance should contain minimum 3 items in the array.`
+      message: localization.getMinItemsErrorMessage(3)
     }
     ]);
   });
@@ -464,7 +464,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/uniqueItems",
       instanceLocation: "#",
-      message: `The instance should have unique items in the array.`
+      message: localization.getUniqueItemsErrorMessage()
     }
     ]);
   });
@@ -491,7 +491,7 @@ describe("Error messages", async () => {
       {
         schemaLocation: "https://example.com/main#/format",
         instanceLocation: "#",
-        message: "The instance should match the format: email."
+        message: localization.getFormatErrorMessage("email")
       }
     ]);
   });
@@ -518,7 +518,7 @@ describe("Error messages", async () => {
       {
         schemaLocation: "https://example.com/main#/pattern",
         instanceLocation: "#",
-        message: "The instance should match the pattern: ^[a-z]+$."
+        message: localization.getPatternErrorMessage("^[a-z]+$")
       }
     ]);
   });
@@ -678,7 +678,7 @@ describe("Error messages", async () => {
       {
         schemaLocation: `https://example.com/main#/anyOf/0/minLength`,
         instanceLocation: "#",
-        message: "The instance should be at least 5 characters"
+        message: localization.getMinLengthErrorMessage(5)
       }
     ]);
   });
@@ -739,7 +739,7 @@ describe("Error messages", async () => {
       {
         schemaLocation: "https://example.com/main#/anyOf/1/properties/ID/pattern",
         instanceLocation: "#/ID",
-        message: "The instance should match the pattern: ^[0-9\\-]+$."
+        message: localization.getPatternErrorMessage("^[0-9\\-]+$")
       }
     ]);
   });
@@ -882,7 +882,7 @@ describe("Error messages", async () => {
       {
         schemaLocation: "https://example.com/main#/$defs/numberSchema/minimum",
         instanceLocation: "#/foo",
-        message: "The instance should be greater than or equal to 10."
+        message: localization.getMinimumErrorMessage(10)
       }
     ]);
   });
@@ -929,7 +929,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([
       {
         instanceLocation: "#",
-        message: "A required value is missing from the list",
+        message: localization.getContainsErrorMessage(),
         schemaLocation: "https://example.com/main#/contains"
       },
       {
@@ -939,12 +939,12 @@ describe("Error messages", async () => {
       },
       {
         instanceLocation: "#/1",
-        message: "The instance should be of multiple of 2.",
+        message: localization.getMultipleOfErrorMessage(2),
         schemaLocation: "https://example.com/main#/contains/multipleOf"
       },
       {
         instanceLocation: "#/2",
-        message: "The instance should be of multiple of 2.",
+        message: localization.getMultipleOfErrorMessage(2),
         schemaLocation: "https://example.com/main#/contains/multipleOf"
       }
     ]);
@@ -972,7 +972,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([
       {
         instanceLocation: "#",
-        message: `The instance should be greater than or equal to 0.`,
+        message: localization.getMinimumErrorMessage(0),
         schemaLocation: "https://example.com/main#/then/minimum"
       }
     ]);
@@ -1000,7 +1000,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([
       {
         instanceLocation: "#",
-        message: `The instance should be greater than or equal to 0.`,
+        message: localization.getMinimumErrorMessage(0),
         schemaLocation: "https://example.com/main#/else/minimum"
       }
     ]);
@@ -1085,7 +1085,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([
       {
         instanceLocation: "#*/Foo",
-        message: "The instance should match the pattern: ^[a-z]*$.",
+        message: localization.getPatternErrorMessage("^[a-z]*$"),
         schemaLocation: "https://example.com/main#/propertyNames/pattern"
       }
     ]);
@@ -1130,12 +1130,12 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([
       {
         instanceLocation: "#/unknown_property",
-        message: `The property "unknown_property" is not allowed.`,
+        message: localization.getAdditionalPropertiesErrorMessage("unknown_property"),
         schemaLocation: "https://example.com/main#/additionalProperties"
       },
       {
         instanceLocation: "#/unknown_property1",
-        message: `The property "unknown_property1" is not allowed.`,
+        message: localization.getAdditionalPropertiesErrorMessage("unknown_property1"),
         schemaLocation: "https://example.com/main#/additionalProperties"
       }
     ]);
@@ -1167,7 +1167,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([
       {
         instanceLocation: "#",
-        message: `Property "foo" requires property(s): baz.`,
+        message: localization.getDependentRequiredErrorMessage("foo", ["baz"]),
         schemaLocation: "https://example.com/main#/dependentRequired"
       }
     ]);
