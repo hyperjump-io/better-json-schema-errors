@@ -657,7 +657,7 @@ export const constructErrorIndex = async (outputUnit, schema, errorIndex = {}) =
     }
     const absoluteKeywordLocation = errorOutputUnit.absoluteKeywordLocation
       ?? await toAbsoluteKeywordLocation(schema, /** @type string */ (errorOutputUnit.keywordLocation));
-    const instanceLocation = /** @type string */ (normalizeInstanceLocation(errorOutputUnit.instanceLocation));
+    const instanceLocation = /** @type string */ (normalizeInstanceLocation(errorOutputUnit.instanceLocation, errorOutputUnit.absoluteKeywordLocation));
     errorIndex[absoluteKeywordLocation] ??= {};
     errorIndex[absoluteKeywordLocation][instanceLocation] = true;
     await constructErrorIndex(errorOutputUnit, schema, errorIndex);
@@ -677,9 +677,27 @@ export async function toAbsoluteKeywordLocation(schema, keywordLocation) {
   return `${schema.document.baseUri}#${schema.cursor}`;
 }
 
-/** @type {(location: string | undefined) => string | undefined} */
-function normalizeInstanceLocation(location) {
-  return location?.startsWith("/") || location === "" ? `#${location}` : location;
+/** @type {(location: string | undefined, keywordLocation: string | undefined) => string | undefined} */
+function normalizeInstanceLocation(location, keywordLocation) {
+  if (typeof location !== "string") {
+    return location;
+  }
+
+  if (location.includes("*/")) {
+    return location.startsWith("#") ? location : `#${location}`;
+  }
+
+  const isPropertyNameError = keywordLocation?.includes("/propertyNames/");
+  const purePointer = location.startsWith("#") ? location.substring(1) : location;
+
+  if (isPropertyNameError) {
+    const segments = [...pointerSegments(purePointer)];
+    const key = segments.pop() ?? "";
+    const parentPath = segments.join("/");
+    return `#${parentPath}*/${key}`;
+  } else {
+    return `#${purePointer}`;
+  }
 }
 
 /**
