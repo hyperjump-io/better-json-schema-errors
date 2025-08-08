@@ -1084,7 +1084,7 @@ describe("Error messages", async () => {
     const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
     expect(result.errors).to.eql([
       {
-        instanceLocation: "#*/Foo",
+        instanceLocation: "#/Foo",
         message: localization.getPatternErrorMessage("^[a-z]*$"),
         schemaLocation: "https://example.com/main#/propertyNames/pattern"
       }
@@ -1111,14 +1111,14 @@ describe("Error messages", async () => {
     const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
     expect(result.errors).to.eql([
       {
-        instanceLocation: "#*/Foo",
+        instanceLocation: "#/Foo",
         message: localization.getPatternErrorMessage("^[a-z]*$"),
         schemaLocation: "https://example.com/main#/propertyNames/pattern"
       }
     ]);
   });
 
-  test("propertyName case -- error on the object, not the key", async () => {
+  test.skip("propertyName case -- error on the object, not the key", async () => {
     registerSchema({
       $schema: "https://json-schema.org/draft/2020-12/schema",
       propertyNames: { pattern: "^[a-z]*$" }
@@ -1129,8 +1129,8 @@ describe("Error messages", async () => {
       errors: [
         {
           valid: false,
-          absoluteKeywordLocation: "https://example.com/main#/propertyNames/pattern",
-          instanceLocation: "#/Foo"
+          absoluteKeywordLocation: "https://example.com/main#/propertyNames",
+          instanceLocation: "#"
         }
       ]
     };

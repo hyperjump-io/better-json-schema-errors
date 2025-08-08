@@ -310,6 +310,7 @@ keywordHandlers["https://json-schema.org/keyword/propertyNames"] = {
       return outputs;
     }
     for (const propertyName of Instance.keys(instance)) {
+      propertyName.pointer = propertyName.pointer.replace(/^\*/, "");
       outputs.push(evaluateSchema(propertyNamesSchemaLocation, propertyName, context));
     }
     return outputs;
@@ -657,7 +658,7 @@ export const constructErrorIndex = async (outputUnit, schema, errorIndex = {}) =
     }
     const absoluteKeywordLocation = errorOutputUnit.absoluteKeywordLocation
       ?? await toAbsoluteKeywordLocation(schema, /** @type string */ (errorOutputUnit.keywordLocation));
-    const instanceLocation = /** @type string */ (normalizeInstanceLocation(errorOutputUnit.instanceLocation, errorOutputUnit.absoluteKeywordLocation));
+    const instanceLocation = normalizeInstanceLocation(/** @type string */ (errorOutputUnit.instanceLocation));
     errorIndex[absoluteKeywordLocation] ??= {};
     errorIndex[absoluteKeywordLocation][instanceLocation] = true;
     await constructErrorIndex(errorOutputUnit, schema, errorIndex);
@@ -677,27 +678,10 @@ export async function toAbsoluteKeywordLocation(schema, keywordLocation) {
   return `${schema.document.baseUri}#${schema.cursor}`;
 }
 
-/** @type {(location: string | undefined, keywordLocation: string | undefined) => string | undefined} */
-function normalizeInstanceLocation(location, keywordLocation) {
-  if (typeof location !== "string") {
-    return location;
-  }
-
-  if (location.includes("*/")) {
-    return location.startsWith("#") ? location : `#${location}`;
-  }
-
-  const isPropertyNameError = keywordLocation?.includes("/propertyNames/");
-  const purePointer = location.startsWith("#") ? location.substring(1) : location;
-
-  if (isPropertyNameError) {
-    const segments = [...pointerSegments(purePointer)];
-    const key = segments.pop() ?? "";
-    const parentPath = segments.join("/");
-    return `#${parentPath}*/${key}`;
-  } else {
-    return `#${purePointer}`;
-  }
+/** @type {(location: string) => string} */
+function normalizeInstanceLocation(location) {
+  const instanceLocation = location.startsWith("/") || location === "" ? `#${location}` : location;
+  return instanceLocation.replace(/(#|^)\*\//, "$1/");
 }
 
 /**
