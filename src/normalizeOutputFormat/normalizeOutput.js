@@ -310,6 +310,7 @@ keywordHandlers["https://json-schema.org/keyword/propertyNames"] = {
       return outputs;
     }
     for (const propertyName of Instance.keys(instance)) {
+      propertyName.pointer = propertyName.pointer.replace(/^\*/, "");
       outputs.push(evaluateSchema(propertyNamesSchemaLocation, propertyName, context));
     }
     return outputs;
@@ -657,7 +658,7 @@ export const constructErrorIndex = async (outputUnit, schema, errorIndex = {}) =
     }
     const absoluteKeywordLocation = errorOutputUnit.absoluteKeywordLocation
       ?? await toAbsoluteKeywordLocation(schema, /** @type string */ (errorOutputUnit.keywordLocation));
-    const instanceLocation = /** @type string */ (normalizeInstanceLocation(errorOutputUnit.instanceLocation));
+    const instanceLocation = normalizeInstanceLocation(/** @type string */ (errorOutputUnit.instanceLocation));
     errorIndex[absoluteKeywordLocation] ??= {};
     errorIndex[absoluteKeywordLocation][instanceLocation] = true;
     await constructErrorIndex(errorOutputUnit, schema, errorIndex);
@@ -677,9 +678,10 @@ export async function toAbsoluteKeywordLocation(schema, keywordLocation) {
   return `${schema.document.baseUri}#${schema.cursor}`;
 }
 
-/** @type {(location: string | undefined) => string | undefined} */
+/** @type {(location: string) => string} */
 function normalizeInstanceLocation(location) {
-  return location?.startsWith("/") || location === "" ? `#${location}` : location;
+  const instanceLocation = location.startsWith("/") || location === "" ? `#${location}` : location;
+  return instanceLocation.replace(/(#|^)\*\//, "$1/");
 }
 
 /**

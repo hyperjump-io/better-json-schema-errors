@@ -29,146 +29,136 @@ export class Localization {
     return new Localization(locale, bundle);
   }
 
+  /**
+   * @private
+   * @param {string} messageId
+   * @param {Record<string, FluentVariable>} [args]
+   * @returns {string}
+   */
+  _formatMessage(messageId, args) {
+    const message = this.bundle.getMessage(messageId);
+    if (!message?.value) {
+      return `Localization error: message '${messageId}' not found.`;
+    }
+    return this.bundle.formatPattern(message.value, args);
+  }
+
   /** @type (expectedTypes: string | string[], actualType: string) => string */
   getTypeErrorMessage(expectedTypes, actualType) {
-    const message =/** @type Message */ (this.bundle.getMessage("type-error"));
+    const types = Array.isArray(expectedTypes) ? expectedTypes : [expectedTypes];
+    const expected = new Intl.ListFormat(this.locale, { type: "disjunction" }).format(
+      types.map((type) => JSON.stringify(type))
+    );
 
-    if (typeof expectedTypes === "string") {
-      expectedTypes = [expectedTypes];
-    }
-
-    const expected = expectedTypes.map((type) => JSON.stringify(type));
-    return this.bundle.formatPattern(/** @type Pattern */(message.value), {
-      expected: new Intl.ListFormat(this.locale, { type: "disjunction" }).format(expected),
+    return this._formatMessage("type-error", {
+      expected,
       actual: JSON.stringify(actualType)
     });
   }
 
   /** @type (limit: number) => string */
   getMinLengthErrorMessage(limit) {
-    const message =/** @type Message */ (this.bundle.getMessage("min-length-error"));
-    return this.bundle.formatPattern(/** @type Pattern */ (message.value), { limit });
+    return this._formatMessage("min-length-error", { limit });
   }
 
   /** @type (limit: number) => string */
   getMaxLengthErrorMessage(limit) {
-    const message =/** @type Message */ (this.bundle.getMessage("max-length-error"));
-    return this.bundle.formatPattern(/** @type Pattern */ (message.value), { limit });
+    return this._formatMessage("max-length-error", { limit });
   }
 
   /** @type (limit: number) => string */
   getMaximumErrorMessage(limit) {
-    const message =/** @type Message */ (this.bundle.getMessage("maximum-error"));
-    return this.bundle.formatPattern(/** @type Pattern */ (message.value), { limit });
+    return this._formatMessage("maximum-error", { limit });
   }
 
   /** @type (limit: number) => string */
   getMinimumErrorMessage(limit) {
-    const message =/** @type Message */ (this.bundle.getMessage("minimum-error"));
-    return this.bundle.formatPattern(/** @type Pattern */ (message.value), { limit });
+    return this._formatMessage("minimum-error", { limit });
   }
 
   /** @type (limit: number) => string */
   getExclusiveMinimumErrorMessage(limit) {
-    const message =/** @type Message */ (this.bundle.getMessage("exclusive-minimum-error"));
-    return this.bundle.formatPattern(/** @type Pattern */ (message.value), { limit });
+    return this._formatMessage("exclusive-minimum-error", { limit });
   }
 
   /** @type (limit: number) => string */
   getExclusiveMaximumErrorMessage(limit) {
-    const message =/** @type Message */ (this.bundle.getMessage("exclusive-maximum-error"));
-    return this.bundle.formatPattern(/** @type Pattern */ (message.value), { limit });
+    return this._formatMessage("exclusive-maximum-error", { limit });
   }
 
-  /** @type (instanceLocation: string, missingProperties: string | string[]) => string */
+  /** @type (instanceLocation: string, missingProperties: string[]) => string */
   getRequiredErrorMessage(instanceLocation, missingProperties) {
-    const requiredList = new Intl.ListFormat(this.locale, { type: "conjunction" }).format(missingProperties);
-    const message =/** @type Message */ (this.bundle.getMessage("required-error"));
-    return this.bundle.formatPattern(/** @type Pattern */ (message.value), {
+    return this._formatMessage("required-error", {
       instanceLocation,
-      missingProperties: requiredList
+      missingProperties: new Intl.ListFormat(this.locale, { type: "conjunction" }).format(missingProperties)
     });
   }
 
   /** @type (divisor: number) => string */
   getMultipleOfErrorMessage(divisor) {
-    const message =/** @type Message */ (this.bundle.getMessage("multiple-of-error"));
-    return this.bundle.formatPattern(/** @type Pattern */ (message.value), { divisor });
+    return this._formatMessage("multiple-of-error", { divisor });
   }
 
   /** @type (limit: number) => string */
   getMaxPropertiesErrorMessage(limit) {
-    const message =/** @type Message */ (this.bundle.getMessage("max-properties-error"));
-    return this.bundle.formatPattern(/** @type Pattern */ (message.value), { limit });
+    return this._formatMessage("max-properties-error", { limit });
   }
 
   /** @type (limit: number) => string */
   getMinPropertiesErrorMessage(limit) {
-    const message =/** @type Message */ (this.bundle.getMessage("min-properties-error"));
-    return this.bundle.formatPattern(/** @type Pattern */ (message.value), { limit });
+    return this._formatMessage("min-properties-error", { limit });
   }
 
   /** @type (expectedValue: FluentVariable) => string */
   getConstErrorMessage(expectedValue) {
-    const message =/** @type Message */ (this.bundle.getMessage("const-error")); // type doubt here
-    return this.bundle.formatPattern(/** @type Pattern */ (message.value), { expectedValue });
+    return this._formatMessage("const-error", { expectedValue });
   }
 
   /** @type (limit: number) => string */
   getMaxItemsErrorMessage(limit) {
-    const message =/** @type Message */ (this.bundle.getMessage("max-items-error"));
-    return this.bundle.formatPattern(/** @type Pattern */ (message.value), { limit });
+    return this._formatMessage("max-items-error", { limit });
   }
 
   /** @type (limit: number) => string */
   getMinItemsErrorMessage(limit) {
-    const message =/** @type Message */ (this.bundle.getMessage("min-items-error"));
-    return this.bundle.formatPattern(/** @type Pattern */ (message.value), { limit });
+    return this._formatMessage("min-items-error", { limit });
   }
 
   /** @type () => string */
   getUniqueItemsErrorMessage() {
-    const message =/** @type Message */ (this.bundle.getMessage("unique-items-error"));
-    return this.bundle.formatPattern(/** @type Pattern */ (message.value));
+    return this._formatMessage("unique-items-error");
   }
 
   /** @type (format: string) => string */
   getFormatErrorMessage(format) {
-    const message =/** @type Message */ (this.bundle.getMessage("format-error"));
-    return this.bundle.formatPattern(/** @type Pattern */ (message.value), { format });
+    return this._formatMessage("format-error", { format });
   }
 
   /** @type (pattern: string) => string */
   getPatternErrorMessage(pattern) {
-    const message =/** @type Message */ (this.bundle.getMessage("pattern-error"));
-    return this.bundle.formatPattern(/** @type Pattern */ (message.value), { pattern });
+    return this._formatMessage("pattern-error", { pattern });
   }
 
   /** @type () => string */
   getContainsErrorMessage() {
-    const message =/** @type Message */ (this.bundle.getMessage("contains-error"));
-    return this.bundle.formatPattern(/** @type Pattern */ (message.value));
+    return this._formatMessage("contains-error");
   }
 
   /** @type () => string */
   getNotErrorMessage() {
-    const message =/** @type Message */ (this.bundle.getMessage("not-error"));
-    return this.bundle.formatPattern(/** @type Pattern */ (message.value));
+    return this._formatMessage("not-error");
   }
 
   /** @type (propertyName: string) => string */
   getAdditionalPropertiesErrorMessage(propertyName) {
-    const message =/** @type Message */ (this.bundle.getMessage("additional-properties-error"));
-    return this.bundle.formatPattern(/** @type Pattern */ (message.value), { propertyName });
+    return this._formatMessage("additional-properties-error", { propertyName });
   }
 
-  /** @type (property: string, missingDependents: string | string[]) => string */
+  /** @type (property: string, missingDependents: string[]) => string */
   getDependentRequiredErrorMessage(property, missingDependents) {
-    const dependentsList = new Intl.ListFormat(this.locale, { type: "conjunction" }).format(missingDependents);
-    const message =/** @type Message */ (this.bundle.getMessage("dependent-required-error"));
-    return this.bundle.formatPattern(/** @type Pattern */ (message.value), {
+    return this._formatMessage("dependent-required-error", {
       property,
-      missingDependents: dependentsList
+      missingDependents: new Intl.ListFormat(this.locale, { type: "conjunction" }).format(missingDependents)
     });
   }
 
@@ -191,21 +181,20 @@ export class Localization {
    * @returns {string}
    */
   getEnumErrorMessage(args) {
-    const message = /** @type Message */ (this.bundle.getMessage("enum-error"));
+    const formattedArgs = {
+      variant: args.variant,
+      instanceValue: `"${args.instanceValue}"`,
+      suggestion: "",
+      allowedValues: ""
+    };
+
     if (args.variant === "fallback") {
       const quotedValues = args.allowedValues.map((value) => JSON.stringify(value));
-      const formattedList = new Intl.ListFormat(this.locale, { type: "disjunction" }).format(quotedValues);
-      return this.bundle.formatPattern(/** @type Pattern */ (message.value), {
-        variant: "fallback",
-        instanceValue: `"${args.instanceValue}"`,
-        allowedValues: formattedList
-      });
+      formattedArgs.allowedValues = new Intl.ListFormat(this.locale, { type: "disjunction" }).format(quotedValues);
     } else {
-      return this.bundle.formatPattern(/** @type Pattern */ (message.value), {
-        variant: "suggestion",
-        instanceValue: `"${args.instanceValue}"`,
-        suggestion: args.suggestion
-      });
+      formattedArgs.suggestion = args.suggestion;
     }
+
+    return this._formatMessage("enum-error", formattedArgs);
   }
 }

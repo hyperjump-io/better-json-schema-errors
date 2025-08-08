@@ -1084,12 +1084,67 @@ describe("Error messages", async () => {
     const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
     expect(result.errors).to.eql([
       {
+        instanceLocation: "#/Foo",
+        message: localization.getPatternErrorMessage("^[a-z]*$"),
+        schemaLocation: "https://example.com/main#/propertyNames/pattern"
+      }
+    ]);
+  });
+
+  test("propertyName case -- without star notation", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      propertyNames: { pattern: "^[a-z]*$" }
+    }, schemaUri);
+    const instance = { Foo: 1 };
+    const errorOutput = {
+      valid: false,
+      errors: [
+        {
+          valid: false,
+          absoluteKeywordLocation: "https://example.com/main#/propertyNames/pattern",
+          instanceLocation: "#/Foo"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
+    expect(result.errors).to.eql([
+      {
+        instanceLocation: "#/Foo",
+        message: localization.getPatternErrorMessage("^[a-z]*$"),
+        schemaLocation: "https://example.com/main#/propertyNames/pattern"
+      }
+    ]);
+  });
+
+  test.skip("propertyName case -- error on the object, not the key", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      propertyNames: { pattern: "^[a-z]*$" }
+    }, schemaUri);
+    const instance = { Foo: 1 };
+    const errorOutput = {
+      valid: false,
+      errors: [
+        {
+          valid: false,
+          absoluteKeywordLocation: "https://example.com/main#/propertyNames",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
+    expect(result.errors).to.eql([
+      {
         instanceLocation: "#*/Foo",
         message: localization.getPatternErrorMessage("^[a-z]*$"),
         schemaLocation: "https://example.com/main#/propertyNames/pattern"
       }
     ]);
   });
+
   test("should fail when an additional property is found and additionalProperties is false", async () => {
     registerSchema({
       $schema: "https://json-schema.org/draft/2020-12/schema",
