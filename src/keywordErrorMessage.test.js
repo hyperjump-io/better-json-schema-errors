@@ -605,6 +605,53 @@ describe("Error messages", async () => {
       }]);
   });
 
+  test("items only validates values not evaluated by prefixItems", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      prefixItems: [
+        {
+          type: "boolean"
+        },
+        {
+          type: "number"
+        }
+      ],
+      items: {
+        type: "string"
+      }
+    }, schemaUri);
+    const instance = [false, "", 2, ""];
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/prefixItems/1/type",
+          instanceLocation: "#/1"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/items/type",
+          instanceLocation: "#/2"
+        }
+      ]
+    };
+    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: "https://example.com/main#/prefixItems/1/type",
+        instanceLocation: "#/1",
+        message: localization.getTypeErrorMessage("number", "string")
+      },
+      {
+        schemaLocation: "https://example.com/main#/items/type",
+        instanceLocation: "#/2",
+        message: localization.getTypeErrorMessage("string", "number")
+      }
+    ]);
+  });
+
   test("anyOf where the instance doesn't match type of either of the alternatives", async () => {
     registerSchema({
       $schema: "https://json-schema.org/draft/2020-12/schema",

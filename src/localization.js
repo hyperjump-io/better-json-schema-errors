@@ -2,8 +2,7 @@ import { readFile } from "node:fs/promises";
 import { FluentBundle, FluentResource } from "@fluent/bundle";
 
 /**
- * @import { Pattern} from "@fluent/bundle/esm/ast.d.ts"
- * @import { FluentVariable, Message } from "@fluent/bundle"
+ * @import { FluentVariable} from "@fluent/bundle"
  */
 export class Localization {
   /**
@@ -20,7 +19,7 @@ export class Localization {
     const ftl = await readFile(`${import.meta.dirname}/translations/${locale}.ftl`, "utf-8");
     const resource = new FluentResource(ftl);
 
-    const bundle = new FluentBundle("en-US");
+    const bundle = new FluentBundle(locale);
     let errors = bundle.addResource(resource);
     if (errors.length) {
       throw Error("Failed to load localization file");
