@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, test } from "vitest";
-import { normalizedErrorOuput } from "./normalizeOutput.js";
-import { betterJsonSchemaErrors } from "../index.js";
+import { normalizedErrorOuput } from "./normalized-output.js";
+import { betterJsonSchemaErrors } from "./index.js";
 import { registerSchema, unregisterSchema } from "@hyperjump/json-schema/draft-2020-12";
-import { Localization } from "../localization.js";
+import { Localization } from "./localization.js";
+
 /**
- * @import { OutputFormat} from "../index.d.ts"
+ * @import { OutputFormat} from "./index.d.ts"
  */
 
 describe("Error Output Normalization", async () => {
@@ -36,7 +37,7 @@ describe("Error Output Normalization", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minLength",
       instanceLocation: "#",
@@ -64,7 +65,7 @@ describe("Error Output Normalization", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minLength",
       instanceLocation: "#",
@@ -91,7 +92,7 @@ describe("Error Output Normalization", async () => {
         }
       ]
     };
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minLength",
       instanceLocation: "#",
@@ -336,7 +337,7 @@ describe("Error Output Normalization", async () => {
         }
       ]
     };
-    await expect(async () => normalizedErrorOuput(instance, /** @type any */(errorOutput), schemaUri)).to.rejects.toThrow("error Output must follow Draft 2019-09");
+    await expect(async () => normalizedErrorOuput(instance, /** @type any */ (errorOutput), schemaUri)).to.rejects.toThrow("error Output must follow Draft 2019-09");
   });
 
   test("correctly resolves keywordLocation through $ref in $defs", async () => {
@@ -363,7 +364,7 @@ describe("Error Output Normalization", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
 
     expect(result.errors).to.eql([
       {

@@ -35,7 +35,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minLength",
       instanceLocation: "#",
@@ -63,7 +63,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/maxLength",
       instanceLocation: "#",
@@ -91,7 +91,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/type",
       instanceLocation: "#",
@@ -119,7 +119,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/maximum",
       instanceLocation: "#",
@@ -147,7 +147,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minimum",
       instanceLocation: "#",
@@ -175,7 +175,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/exclusiveMaximum",
       instanceLocation: "#",
@@ -203,7 +203,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/exclusiveMinimum",
       instanceLocation: "#",
@@ -232,7 +232,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/required",
       instanceLocation: "#",
@@ -261,7 +261,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/multipleOf",
       instanceLocation: "#",
@@ -290,7 +290,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/maxProperties",
       instanceLocation: "#",
@@ -319,7 +319,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minProperties",
       instanceLocation: "#",
@@ -348,7 +348,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/const",
       instanceLocation: "#",
@@ -377,7 +377,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/enum",
       instanceLocation: "#",
@@ -404,7 +404,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/maxItems",
       instanceLocation: "#",
@@ -432,7 +432,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minItems",
       instanceLocation: "#",
@@ -460,7 +460,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/uniqueItems",
       instanceLocation: "#",
@@ -486,7 +486,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([
       {
         schemaLocation: "https://example.com/main#/format",
@@ -513,7 +513,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([
       {
         schemaLocation: "https://example.com/main#/pattern",
@@ -545,7 +545,7 @@ describe("Error messages", async () => {
         }
       ]
     };
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([
       {
         instanceLocation: "#/2",
@@ -591,7 +591,7 @@ describe("Error messages", async () => {
         }
       ]
     };
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([
       {
         instanceLocation: "#/1",
@@ -603,6 +603,53 @@ describe("Error messages", async () => {
         message: localization.getTypeErrorMessage("string", "number"),
         schemaLocation: "https://example.com/main#/prefixItems/2/type"
       }]);
+  });
+
+  test("items only validates values not evaluated by prefixItems", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      prefixItems: [
+        {
+          type: "boolean"
+        },
+        {
+          type: "number"
+        }
+      ],
+      items: {
+        type: "string"
+      }
+    }, schemaUri);
+    const instance = [false, "", 2, ""];
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/prefixItems/1/type",
+          instanceLocation: "#/1"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/items/type",
+          instanceLocation: "#/2"
+        }
+      ]
+    };
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: "https://example.com/main#/prefixItems/1/type",
+        instanceLocation: "#/1",
+        message: localization.getTypeErrorMessage("number", "string")
+      },
+      {
+        schemaLocation: "https://example.com/main#/items/type",
+        instanceLocation: "#/2",
+        message: localization.getTypeErrorMessage("string", "number")
+      }
+    ]);
   });
 
   test("anyOf where the instance doesn't match type of either of the alternatives", async () => {
@@ -634,7 +681,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([
       {
         schemaLocation: "https://example.com/main#/anyOf",
@@ -673,7 +720,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([
       {
         schemaLocation: `https://example.com/main#/anyOf/0/minLength`,
@@ -734,7 +781,7 @@ describe("Error messages", async () => {
         }
       ]
     };
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([
       {
         schemaLocation: "https://example.com/main#/anyOf/1/properties/ID/pattern",
@@ -794,7 +841,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
 
     expect(result.errors).to.eql([
       {
@@ -876,7 +923,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
 
     expect(result.errors).to.eql([
       {
@@ -925,7 +972,7 @@ describe("Error messages", async () => {
         }
       ]
     };
-    const result = await betterJsonSchemaErrors(instance, output, schemaUri);
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([
       {
         instanceLocation: "#",
@@ -968,7 +1015,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
+    const result = await betterJsonSchemaErrors(errorOutput, schemaUri, instance);
     expect(result.errors).to.eql([
       {
         instanceLocation: "#",
@@ -996,7 +1043,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
+    const result = await betterJsonSchemaErrors(errorOutput, schemaUri, instance);
     expect(result.errors).to.eql([
       {
         instanceLocation: "#",
@@ -1025,7 +1072,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
+    const result = await betterJsonSchemaErrors(errorOutput, schemaUri, instance);
     expect(result.errors).to.eql([
       {
         instanceLocation: "#",
@@ -1054,7 +1101,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
+    const result = await betterJsonSchemaErrors(errorOutput, schemaUri, instance);
     expect(result.errors).to.eql([
       {
         instanceLocation: "#/foo",
@@ -1081,7 +1128,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
+    const result = await betterJsonSchemaErrors(errorOutput, schemaUri, instance);
     expect(result.errors).to.eql([
       {
         instanceLocation: "#/Foo",
@@ -1108,7 +1155,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
+    const result = await betterJsonSchemaErrors(errorOutput, schemaUri, instance);
     expect(result.errors).to.eql([
       {
         instanceLocation: "#/Foo",
@@ -1135,7 +1182,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
+    const result = await betterJsonSchemaErrors(errorOutput, schemaUri, instance);
     expect(result.errors).to.eql([
       {
         instanceLocation: "#*/Foo",
@@ -1180,7 +1227,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
+    const result = await betterJsonSchemaErrors(errorOutput, schemaUri, instance);
 
     expect(result.errors).to.eql([
       {
@@ -1217,7 +1264,7 @@ describe("Error messages", async () => {
       ]
     };
 
-    const result = await betterJsonSchemaErrors(instance, errorOutput, schemaUri);
+    const result = await betterJsonSchemaErrors(errorOutput, schemaUri, instance);
 
     expect(result.errors).to.eql([
       {

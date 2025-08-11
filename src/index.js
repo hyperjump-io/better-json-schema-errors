@@ -1,585 +1,147 @@
-import * as Schema from "@hyperjump/browser";
-import { getSchema } from "@hyperjump/json-schema/experimental";
 import * as Instance from "@hyperjump/json-schema/instance/experimental";
-import leven from "leven";
-import { normalizedErrorOuput } from "./normalizeOutputFormat/normalizeOutput.js";
+import { normalizedErrorOuput, setNormalizationHandler } from "./normalized-output.js";
+import { getErrors, addErrorHandler } from "./error-handling.js";
 import { Localization } from "./localization.js";
 
-/**
- * @import { Browser } from "@hyperjump/browser";
- * @import { SchemaDocument } from "@hyperjump/json-schema/experimental";
- * @import { JsonNode } from "@hyperjump/json-schema/instance/experimental";
- * @import { Json } from "@hyperjump/json-pointer";
- * @import {betterJsonSchemaErrors, NormalizedError, OutputUnit, BetterJsonSchemaErrors, ErrorObject } from "./index.d.ts"
- * @import { NormalizedOutput, InstanceOutput } from "./normalizeOutputFormat/normalizeOutput.js"
- */
+// Normalization Handlers
+import additionalProperties from "./normalization-handlers/additionalProperties.js";
+import allOf from "./normalization-handlers/allOf.js";
+import anyOf from "./normalization-handlers/anyOf.js";
+import constKeyword from "./normalization-handlers/const.js";
+import contains from "./normalization-handlers/contains.js";
+import dependentRequired from "./normalization-handlers/dependentRequired.js";
+import dependentSchema from "./normalization-handlers/dependentSchema.js";
+import definitions from "./normalization-handlers/definitions.js";
+import elseKeyword from "./normalization-handlers/else.js";
+import enumKeyword from "./normalization-handlers/enum.js";
+import exclusiveMaximum from "./normalization-handlers/exclusiveMaximum.js";
+import exclusiveMinimum from "./normalization-handlers/exclusiveMinimum.js";
+import items from "./normalization-handlers/items.js";
+import maxContains from "./normalization-handlers/maxContains.js";
+import maxItems from "./normalization-handlers/maxItems.js";
+import maxLength from "./normalization-handlers/maxLength.js";
+import maxProperties from "./normalization-handlers/maxProperties.js";
+import maximum from "./normalization-handlers/maximum.js";
+import minContains from "./normalization-handlers/minContains.js";
+import minItems from "./normalization-handlers/minItems.js";
+import minLength from "./normalization-handlers/minLength.js";
+import minProperties from "./normalization-handlers/minProperties.js";
+import minimum from "./normalization-handlers/minimum.js";
+import multipleOf from "./normalization-handlers/multipleOf.js";
+import not from "./normalization-handlers/not.js";
+import oneOf from "./normalization-handlers/oneOf.js";
+import pattern from "./normalization-handlers/pattern.js";
+import patternProperties from "./normalization-handlers/patternProperties.js";
+import prefixItems from "./normalization-handlers/prefixItems.js";
+import properties from "./normalization-handlers/properties.js";
+import propertyNames from "./normalization-handlers/propertyNames.js";
+import ref from "./normalization-handlers/ref.js";
+import required from "./normalization-handlers/required.js";
+import then from "./normalization-handlers/then.js";
+import type from "./normalization-handlers/type.js";
+import unevaluatedItems from "./normalization-handlers/unevaluatedItems.js";
+import unevaluatedProperties from "./normalization-handlers/unevaluatedProperties.js";
+import uniqueItems from "./normalization-handlers/uniqueItems.js";
 
-const localization = await Localization.forLocale("en-US");
+// Error Handlers
+import anyOfErrorHandler from "./error-handlers/anyOf.js";
+import additionalPropertiesErrorHandler from "./error-handlers/additionalProperties.js";
+import constErrorHandler from "./error-handlers/const.js";
+import containsErrorHandler from "./error-handlers/contains.js";
+import dependentRequiredErrorHandler from "./error-handlers/dependentRequired.js";
+import enumErrorHandler from "./error-handlers/enum.js";
+import exclusiveMaximumErrorHandler from "./error-handlers/exclusiveMaximum.js";
+import exclusiveMinimumErrorHandler from "./error-handlers/exclusiveMinimum.js";
+import formatErrorHandler from "./error-handlers/format.js";
+import maximumErrorHandler from "./error-handlers/maximum.js";
+import minimumErrorHandler from "./error-handlers/minimum.js";
+import maxItemsErrorHandler from "./error-handlers/maxItems.js";
+import minItemsErrorHandler from "./error-handlers/minItems.js";
+import maxPropertiesErrorHandler from "./error-handlers/maxProperties.js";
+import minPropertiesErrorHandler from "./error-handlers/minProperties.js";
+import minLengthErrorHandler from "./error-handlers/minLength.js";
+import multipleOfErrorHandler from "./error-handlers/multipleOf.js";
+import notErrorHandler from "./error-handlers/not.js";
+import patternErrorHandler from "./error-handlers/pattern.js";
+import requiredErrorHandler from "./error-handlers/required.js";
+import typeErrorHandler from "./error-handlers/type.js";
+import uniqueItemsErrorHandler from "./error-handlers/uniqueItems.js";
+import maxLengthErrorHandler from "./error-handlers/maxLength.js";
+
+/**
+ * @import { betterJsonSchemaErrors } from "./index.d.ts"
+ */
 
 /** @type betterJsonSchemaErrors */
-export async function betterJsonSchemaErrors(instance, errorOutput, schemaUri) {
+export async function betterJsonSchemaErrors(errorOutput, schemaUri, instance, options = {}) {
   const normalizedErrors = await normalizedErrorOuput(instance, errorOutput, schemaUri);
   const rootInstance = Instance.fromJs(instance);
-  return { errors: await getErrors(normalizedErrors, rootInstance) };
-}
-
-/** @type (normalizedErrors: NormalizedOutput, rootInstance: JsonNode) => Promise<ErrorObject[]> */
-const getErrors = async (normalizedErrors, rootInstance) => {
-  /** @type ErrorObject[] */
-  const errors = [];
-
-  for (const instanceLocation in normalizedErrors) {
-    const instance = Instance.get(instanceLocation, rootInstance);
-    for (const errorHandler of errorHandlers) {
-      const errorObject = await errorHandler(normalizedErrors[instanceLocation], /** @type JsonNode */ (instance));
-      if (errorObject) {
-        errors.push(...errorObject);
-      }
-    }
-  }
-
-  return errors;
+  const localization = await Localization.forLocale(options.language ?? "en-US");
+  return { errors: await getErrors(normalizedErrors, rootInstance, localization) };
 };
 
-/**
- * @typedef {(normalizedErrors: InstanceOutput, instance: JsonNode) => Promise<ErrorObject[]>} ErrorHandler
- */
-
-/** @type ErrorHandler[] */
-const errorHandlers = [
-
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-
-    if (normalizedErrors["https://json-schema.org/keyword/anyOf"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/anyOf"]) {
-        /** @type NormalizedOutput[] */
-        const alternatives = [];
-        const allAlternatives = /** @type NormalizedOutput[] */ (normalizedErrors["https://json-schema.org/keyword/anyOf"][schemaLocation]);
-        for (const alternative of allAlternatives) {
-          if (Object.values(alternative[Instance.uri(instance)]["https://json-schema.org/keyword/type"]).every((valid) => valid)) {
-            alternatives.push(alternative);
-          }
-        }
-        // case 1 where no. alternative matched the type of the instance.
-        if (alternatives.length === 0) {
-          /** @type Set<string> */
-          const expectedTypes = new Set();
-
-          for (const alternative of allAlternatives) {
-            for (const instanceLocation in alternative) {
-              if (instanceLocation === Instance.uri(instance)) {
-                for (const schemaLocation in alternative[instanceLocation]["https://json-schema.org/keyword/type"]) {
-                  const keyword = await getSchema(schemaLocation);
-                  const expectedType = /** @type string */ (Schema.value(keyword));
-                  expectedTypes.add(expectedType);
-                }
-              }
-            }
-          }
-          errors.push({
-            message: localization.getTypeErrorMessage([...expectedTypes], Instance.typeOf(instance)),
-            instanceLocation: Instance.uri(instance),
-            schemaLocation: schemaLocation
-          });
-        } else if (alternatives.length === 1) { // case 2 when only one type match
-          return getErrors(alternatives[0], instance);
-        } else if (instance.type === "object") {
-          let targetAlternativeIndex = -1;
-          for (const alternative of alternatives) {
-            targetAlternativeIndex++;
-            for (const instanceLocation in alternative) {
-              if (instanceLocation !== "#") {
-                return getErrors(alternatives[targetAlternativeIndex], instance);
-              }
-            }
-          }
-        }
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-
-    if (normalizedErrors["https://json-schema.org/keyword/minLength"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/minLength"]) {
-        if (!normalizedErrors["https://json-schema.org/keyword/minLength"][schemaLocation]) {
-          const keyword = await getSchema(schemaLocation);
-          errors.push({
-            message: localization.getMinLengthErrorMessage(Schema.value(keyword)),
-            instanceLocation: Instance.uri(instance),
-            schemaLocation: schemaLocation
-          });
-        }
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-
-    if (normalizedErrors["https://json-schema.org/keyword/maxLength"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/maxLength"]) {
-        if (!normalizedErrors["https://json-schema.org/keyword/maxLength"][schemaLocation]) {
-          const keyword = await getSchema(schemaLocation);
-          errors.push({
-            message: localization.getMaxLengthErrorMessage(Schema.value(keyword)),
-            instanceLocation: Instance.uri(instance),
-            schemaLocation: schemaLocation
-          });
-        }
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-
-    if (normalizedErrors["https://json-schema.org/keyword/type"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/type"]) {
-        if (!normalizedErrors["https://json-schema.org/keyword/type"][schemaLocation]) {
-          const keyword = await getSchema(schemaLocation);
-          errors.push({
-            message: localization.getTypeErrorMessage(Schema.value(keyword), Instance.typeOf(instance)),
-            instanceLocation: Instance.uri(instance),
-            schemaLocation: schemaLocation
-          });
-        }
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-
-    if (normalizedErrors["https://json-schema.org/keyword/maximum"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/maximum"]) {
-        if (!normalizedErrors["https://json-schema.org/keyword/maximum"][schemaLocation]) {
-          const keyword = await getSchema(schemaLocation);
-          errors.push({
-            message: localization.getMaximumErrorMessage(Schema.value(keyword)),
-            instanceLocation: Instance.uri(instance),
-            schemaLocation: schemaLocation
-          });
-        }
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-
-    if (normalizedErrors["https://json-schema.org/keyword/minimum"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/minimum"]) {
-        if (!normalizedErrors["https://json-schema.org/keyword/minimum"][schemaLocation]) {
-          const keyword = await getSchema(schemaLocation);
-          errors.push({
-            message: localization.getMinimumErrorMessage(Schema.value(keyword)),
-            instanceLocation: Instance.uri(instance),
-            schemaLocation: schemaLocation
-          });
-        }
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-
-    if (normalizedErrors["https://json-schema.org/keyword/exclusiveMinimum"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/exclusiveMinimum"]) {
-        if (!normalizedErrors["https://json-schema.org/keyword/exclusiveMinimum"][schemaLocation]) {
-          const keyword = await getSchema(schemaLocation);
-          errors.push({
-            message: localization.getExclusiveMinimumErrorMessage(Schema.value(keyword)),
-            instanceLocation: Instance.uri(instance),
-            schemaLocation: schemaLocation
-          });
-        }
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-
-    if (normalizedErrors["https://json-schema.org/keyword/exclusiveMaximum"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/exclusiveMaximum"]) {
-        if (!normalizedErrors["https://json-schema.org/keyword/exclusiveMaximum"][schemaLocation]) {
-          const keyword = await getSchema(schemaLocation);
-          errors.push({
-            message: localization.getExclusiveMaximumErrorMessage(Schema.value(keyword)),
-            instanceLocation: Instance.uri(instance),
-            schemaLocation: schemaLocation
-          });
-        }
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-
-    if (normalizedErrors["https://json-schema.org/keyword/required"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/required"]) {
-        if (!normalizedErrors["https://json-schema.org/keyword/required"][schemaLocation]) {
-          const keyword = await getSchema(schemaLocation);
-          /** @type Set<string> */
-          const required = new Set(Schema.value(keyword));
-          for (const propertyName in Instance.value(instance)) {
-            required.delete(propertyName);
-          }
-          errors.push({
-            message: localization.getRequiredErrorMessage(Instance.uri(instance), [...required]),
-            instanceLocation: Instance.uri(instance),
-            schemaLocation: schemaLocation
-          });
-        }
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-
-    if (normalizedErrors["https://json-schema.org/keyword/multipleOf"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/multipleOf"]) {
-        if (!normalizedErrors["https://json-schema.org/keyword/multipleOf"][schemaLocation]) {
-          const keyword = await getSchema(schemaLocation);
-          errors.push({
-            message: localization.getMultipleOfErrorMessage(Schema.value(keyword)),
-            instanceLocation: Instance.uri(instance),
-            schemaLocation: schemaLocation
-          });
-        }
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-
-    if (normalizedErrors["https://json-schema.org/keyword/maxProperties"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/maxProperties"]) {
-        if (!normalizedErrors["https://json-schema.org/keyword/maxProperties"][schemaLocation]) {
-          const keyword = await getSchema(schemaLocation);
-          errors.push({
-            message: localization.getMaxPropertiesErrorMessage(Schema.value(keyword)),
-            instanceLocation: Instance.uri(instance),
-            schemaLocation: schemaLocation
-          });
-        }
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-
-    if (normalizedErrors["https://json-schema.org/keyword/minProperties"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/minProperties"]) {
-        if (!normalizedErrors["https://json-schema.org/keyword/minProperties"][schemaLocation]) {
-          const keyword = await getSchema(schemaLocation);
-          errors.push({
-            message: localization.getMinPropertiesErrorMessage(Schema.value(keyword)),
-            instanceLocation: Instance.uri(instance),
-            schemaLocation: schemaLocation
-          });
-        }
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-
-    if (normalizedErrors["https://json-schema.org/keyword/const"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/const"]) {
-        if (!normalizedErrors["https://json-schema.org/keyword/const"][schemaLocation]) {
-          const keyword = await getSchema(schemaLocation);
-          errors.push({
-            message: localization.getConstErrorMessage(Schema.value(keyword)),
-            instanceLocation: Instance.uri(instance),
-            schemaLocation: schemaLocation
-          });
-        }
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-
-    if (normalizedErrors["https://json-schema.org/keyword/enum"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/enum"]) {
-        if (!normalizedErrors["https://json-schema.org/keyword/enum"][schemaLocation]) {
-          const keyword = await getSchema(schemaLocation);
-
-          /** @type {Array<string>} */
-          const allowedValues = Schema.value(keyword);
-          const currentValue = /** @type {string} */ (Instance.value(instance));
-
-          const bestMatch = allowedValues
-            .map((value) => ({
-              value,
-              weight: leven(value, currentValue)
-            }))
-            .sort((a, b) => a.weight - b.weight)[0];
-          let message;
-          if (
-            allowedValues.length === 1
-            || (bestMatch && bestMatch.weight < bestMatch.value.length)
-          ) {
-            message = localization.getEnumErrorMessage({
-              variant: "suggestion",
-              instanceValue: currentValue,
-              suggestion: bestMatch.value
-            });
-          } else {
-            message = localization.getEnumErrorMessage({
-              variant: "fallback",
-              instanceValue: currentValue,
-              allowedValues: allowedValues
-            });
-          }
-          errors.push({
-            message,
-            instanceLocation: Instance.uri(instance),
-            schemaLocation: schemaLocation
-          });
-        }
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-
-    if (normalizedErrors["https://json-schema.org/keyword/maxItems"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/maxItems"]) {
-        if (!normalizedErrors["https://json-schema.org/keyword/maxItems"][schemaLocation]) {
-          const keyword = await getSchema(schemaLocation);
-          errors.push({
-            message: localization.getMaxItemsErrorMessage(Schema.value(keyword)),
-            instanceLocation: Instance.uri(instance),
-            schemaLocation: schemaLocation
-          });
-        }
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-
-    if (normalizedErrors["https://json-schema.org/keyword/minItems"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/minItems"]) {
-        if (!normalizedErrors["https://json-schema.org/keyword/minItems"][schemaLocation]) {
-          const keyword = await getSchema(schemaLocation);
-          errors.push({
-            message: localization.getMinItemsErrorMessage(Schema.value(keyword)),
-            instanceLocation: Instance.uri(instance),
-            schemaLocation: schemaLocation
-          });
-        }
-      }
-    }
-
-    return errors;
-  },
-
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-
-    if (normalizedErrors["https://json-schema.org/keyword/uniqueItems"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/uniqueItems"]) {
-        if (!normalizedErrors["https://json-schema.org/keyword/uniqueItems"][schemaLocation]) {
-          errors.push({
-            message: localization.getUniqueItemsErrorMessage(),
-            instanceLocation: Instance.uri(instance),
-            schemaLocation: schemaLocation
-          });
-        }
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-
-    if (normalizedErrors["https://json-schema.org/keyword/format"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/format"]) {
-        if (!normalizedErrors["https://json-schema.org/keyword/format"][schemaLocation]) {
-          const keyword = await getSchema(schemaLocation);
-          errors.push({
-            message: localization.getFormatErrorMessage(Schema.value(keyword)),
-            instanceLocation: Instance.uri(instance),
-            schemaLocation: schemaLocation
-          });
-        }
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-
-    if (normalizedErrors["https://json-schema.org/keyword/pattern"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/pattern"]) {
-        if (!normalizedErrors["https://json-schema.org/keyword/pattern"][schemaLocation]) {
-          const keyword = await getSchema(schemaLocation);
-          errors.push({
-            message: localization.getPatternErrorMessage(Schema.value(keyword)),
-            instanceLocation: Instance.uri(instance),
-            schemaLocation: schemaLocation
-          });
-        }
-      }
-    }
-
-    return errors;
-  },
-
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-    if (normalizedErrors["https://json-schema.org/keyword/contains"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/contains"]) {
-        errors.push({
-          message: localization.getContainsErrorMessage(),
-          instanceLocation: Instance.uri(instance),
-          schemaLocation: schemaLocation
-        });
-        const containsNodes = /** @type NormalizedOutput[] */(normalizedErrors["https://json-schema.org/keyword/contains"][schemaLocation]);
-        for (const errorOutput of containsNodes) {
-          const containsSubErrors = await getErrors(errorOutput, instance);
-          errors.push(...containsSubErrors);
-        }
-      }
-    }
-
-    return errors;
-  },
-
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-
-    if (normalizedErrors["https://json-schema.org/keyword/not"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/not"]) {
-        errors.push({
-          message: localization.getNotErrorMessage(),
-          instanceLocation: Instance.uri(instance),
-          schemaLocation: schemaLocation
-        });
-      }
-    }
-
-    return errors;
-  },
-
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-    if (normalizedErrors["https://json-schema.org/validation"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/validation"]) {
-        if (!normalizedErrors["https://json-schema.org/validation"][schemaLocation] && schemaLocation.endsWith("/additionalProperties")) {
-          const notAllowedValue = /** @type string */(Instance.uri(instance).split("/").pop());
-          errors.push({
-            message: localization.getAdditionalPropertiesErrorMessage(notAllowedValue),
-            instanceLocation: Instance.uri(instance),
-            schemaLocation: schemaLocation
-          });
-        }
-      }
-    }
-    return errors;
-  },
-
-  async (normalizedErrors, instance) => {
-    /** @type ErrorObject[] */
-    const errors = [];
-
-    if (normalizedErrors["https://json-schema.org/keyword/dependentRequired"]) {
-      for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/dependentRequired"]) {
-        if (!normalizedErrors["https://json-schema.org/keyword/dependentRequired"][schemaLocation]) {
-          const keyword = await getSchema(schemaLocation);
-          const dependentRequired = /** @type {Record<string, string[]>} */(Schema.value(keyword));
-          for (const propertyName in dependentRequired) {
-            if (Instance.has(propertyName, instance)) {
-              const required = dependentRequired[propertyName];
-              const missing = required.filter((prop) => !Instance.has(prop, instance));
-
-              if (missing.length > 0) {
-                errors.push({
-                  message: localization.getDependentRequiredErrorMessage(propertyName, [...missing]),
-                  instanceLocation: Instance.uri(instance),
-                  schemaLocation: schemaLocation
-                });
-              }
-            }
-          }
-        }
-      }
-    }
-
-    return errors;
-  }
-];
+setNormalizationHandler("https://json-schema.org/keyword/additionalProperties", additionalProperties);
+setNormalizationHandler("https://json-schema.org/keyword/allOf", allOf);
+setNormalizationHandler("https://json-schema.org/keyword/anyOf", anyOf);
+setNormalizationHandler("https://json-schema.org/keyword/const", constKeyword);
+setNormalizationHandler("https://json-schema.org/keyword/contains", contains);
+setNormalizationHandler("https://json-schema.org/keyword/dependentRequired", dependentRequired);
+setNormalizationHandler("https://json-schema.org/keyword/dependentSchema", dependentSchema);
+setNormalizationHandler("https://json-schema.org/keyword/definitions", definitions);
+setNormalizationHandler("https://json-schema.org/keyword/else", elseKeyword);
+setNormalizationHandler("https://json-schema.org/keyword/enum", enumKeyword);
+setNormalizationHandler("https://json-schema/keyword/exclusiveMaximum", exclusiveMaximum);
+setNormalizationHandler("https://json-schema/keyword/exclusiveMinimum", exclusiveMinimum);
+setNormalizationHandler("https://json-schema.org/keyword/items", items);
+setNormalizationHandler("https://json-schema.org/keyword/maxContains", maxContains);
+setNormalizationHandler("https://json-schema.org/keyword/maxItems", maxItems);
+setNormalizationHandler("https://json-schema.org/keyword/maxLength", maxLength);
+setNormalizationHandler("https://json-schema.org/keyword/maxProperties", maxProperties);
+setNormalizationHandler("https://json-schema.org/keyword/maximum", maximum);
+setNormalizationHandler("https://json-schema.org/keyword/minContains", minContains);
+setNormalizationHandler("https://json-schema.org/keyword/minItems", minItems);
+setNormalizationHandler("https://json-schema.org/keyword/minLength", minLength);
+setNormalizationHandler("https://json-schema.org/keyword/minProperties", minProperties);
+setNormalizationHandler("https://json-schema.org/keyword/minimum", minimum);
+setNormalizationHandler("https://json-schema/keyword/multipleOf", multipleOf);
+setNormalizationHandler("https://json-schema.org/keyword/not", not);
+setNormalizationHandler("https://json-schema.org/keyword/oneOf", oneOf);
+setNormalizationHandler("https://json-schema.org/keyword/pattern", pattern);
+setNormalizationHandler("https://json-schema.org/keyword/patternProperties", patternProperties);
+setNormalizationHandler("https://json-schema.org/keyword/prefixItems", prefixItems);
+setNormalizationHandler("https://json-schema.org/keyword/properties", properties);
+setNormalizationHandler("https://json-schema.org/keyword/propertyNames", propertyNames);
+setNormalizationHandler("https://json-schema.org/keyword/ref", ref);
+setNormalizationHandler("https://json-schema.org/keyword/required", required);
+setNormalizationHandler("https://json-schema.org/keyword/then", then);
+setNormalizationHandler("https://json-schema.org/keyword/type", type);
+setNormalizationHandler("https://json-schema.org/keyword/unevaluatedItems", unevaluatedItems);
+setNormalizationHandler("https://json-schema.org/keyword/unevaluatedProperties", unevaluatedProperties);
+setNormalizationHandler("https://json-schema.org/keyword/uniqueItems", uniqueItems);
+
+addErrorHandler(anyOfErrorHandler);
+addErrorHandler(additionalPropertiesErrorHandler);
+addErrorHandler(constErrorHandler);
+addErrorHandler(containsErrorHandler);
+addErrorHandler(dependentRequiredErrorHandler);
+addErrorHandler(enumErrorHandler);
+addErrorHandler(exclusiveMaximumErrorHandler);
+addErrorHandler(exclusiveMinimumErrorHandler);
+addErrorHandler(formatErrorHandler);
+addErrorHandler(maximumErrorHandler);
+addErrorHandler(minimumErrorHandler);
+addErrorHandler(maxItemsErrorHandler);
+addErrorHandler(minItemsErrorHandler);
+addErrorHandler(maxPropertiesErrorHandler);
+addErrorHandler(minPropertiesErrorHandler);
+addErrorHandler(minLengthErrorHandler);
+addErrorHandler(maxLengthErrorHandler);
+addErrorHandler(multipleOfErrorHandler);
+addErrorHandler(notErrorHandler);
+addErrorHandler(patternErrorHandler);
+addErrorHandler(requiredErrorHandler);
+addErrorHandler(typeErrorHandler);
+addErrorHandler(uniqueItemsErrorHandler);
+
+export { setNormalizationHandler } from "./normalized-output.js";
+export { addErrorHandler } from "./error-handling.js";
