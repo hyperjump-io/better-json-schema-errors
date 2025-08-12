@@ -1,11 +1,14 @@
 type-error = The instance should be of type {$expected} but found {$actual}.
-min-length-error = The instance should be atleast {$limit} characters.
-max-length-error = The instance should be atmost {$limit} characters long.
+
+string-error = Expected a string {$constraints}.
+string-error-minLength = atleast {$minLength} characters long
+string-error-maxLength = atmost {$maxLength} characters long
+string-error-pattern = to match the pattern {$pattern}
 
 number-error = Expected a number {$constraints}.
 number-error-minimum = greater than {$minimum}
 number-error-exclusive-minimum = greater than or equal to {$minimum}
-number-error-maximum = greater than {$maximum}
+number-error-maximum = less than {$maximum}
 number-error-exclusive-maximum = less than or equal to {$maximum}
 
 required-error = "{$instanceLocation}" is missing required property(s): {$missingProperties}.
@@ -17,7 +20,6 @@ max-items-error = The instance should contain a maximum of {$limit} items in the
 min-items-error = The instance should contain a minimum of {$limit} items in the array.
 unique-items-error = The instance should have unique items in the array.
 format-error = The instance should match the format: {$format}.
-pattern-error = The instance should match the pattern: {$pattern}.
 contains-error = A required value is missing from the list.
 not-error = The instance is not allowed to be used in this schema.
 additional-properties-error = The property "{$propertyName}" is not allowed.

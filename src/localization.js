@@ -14,6 +14,14 @@ import { FluentBundle, FluentResource } from "@fluent/bundle";
  * }} NumberConstraints
  */
 
+/**
+ * @typedef {{
+ *   minLength?: number;
+ *   maxLength?: number;
+ *   pattern?: string;
+ * }} StringConstraints
+ */
+
 export class Localization {
   /**
    * @param {string} locale
@@ -65,16 +73,6 @@ export class Localization {
     });
   }
 
-  /** @type (limit: number) => string */
-  getMinLengthErrorMessage(limit) {
-    return this._formatMessage("min-length-error", { limit });
-  }
-
-  /** @type (limit: number) => string */
-  getMaxLengthErrorMessage(limit) {
-    return this._formatMessage("max-length-error", { limit });
-  }
-
   /** @type (constraints: NumberConstraints) => string */
   getNumberErrorMessage(constraints) {
     /** @type string[] */
@@ -97,6 +95,28 @@ export class Localization {
     }
 
     return this._formatMessage("number-error", {
+      constraints: new Intl.ListFormat(this.locale, { type: "conjunction" }).format(messages)
+    });
+  }
+
+  /** @type (constraints: StringConstraints) => string */
+  getStringErrorMessage(constraints) {
+    /** @type string[] */
+    const messages = [];
+
+    if (constraints.minLength) {
+      messages.push(this._formatMessage("string-error-minLength", constraints));
+    }
+
+    if (constraints.maxLength) {
+      messages.push(this._formatMessage("string-error-maxLength", constraints));
+    }
+
+    if (constraints.pattern) {
+      messages.push(this._formatMessage("string-error-pattern", constraints));
+    }
+
+    return this._formatMessage("string-error", {
       constraints: new Intl.ListFormat(this.locale, { type: "conjunction" }).format(messages)
     });
   }
@@ -147,11 +167,6 @@ export class Localization {
   /** @type (format: string) => string */
   getFormatErrorMessage(format) {
     return this._formatMessage("format-error", { format });
-  }
-
-  /** @type (pattern: string) => string */
-  getPatternErrorMessage(pattern) {
-    return this._formatMessage("pattern-error", { pattern });
   }
 
   /** @type () => string */

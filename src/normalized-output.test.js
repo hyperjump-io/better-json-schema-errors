@@ -41,7 +41,7 @@ describe("Error Output Normalization", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minLength",
       instanceLocation: "#",
-      message: localization.getMinLengthErrorMessage(3)
+      message: localization.getStringErrorMessage({ minLength: 3 })
     }
     ]);
   });
@@ -69,7 +69,7 @@ describe("Error Output Normalization", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minLength",
       instanceLocation: "#",
-      message: localization.getMinLengthErrorMessage(3)
+      message: localization.getStringErrorMessage({ minLength: 3 })
     }]);
   });
 
@@ -96,7 +96,7 @@ describe("Error Output Normalization", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minLength",
       instanceLocation: "#",
-      message: localization.getMinLengthErrorMessage(3)
+      message: localization.getStringErrorMessage({ minLength: 3 })
     }]);
   });
 
@@ -370,7 +370,7 @@ describe("Error Output Normalization", async () => {
       {
         schemaLocation: "https://example.com/main#/$defs/lengthDefinition/minLength",
         instanceLocation: "#/foo",
-        message: localization.getMinLengthErrorMessage(3)
+        message: localization.getStringErrorMessage({ minLength: 3 })
       }
     ]);
   });

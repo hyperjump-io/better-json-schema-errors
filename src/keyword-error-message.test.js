@@ -39,7 +39,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minLength",
       instanceLocation: "#",
-      message: localization.getMinLengthErrorMessage(3)
+      message: localization.getStringErrorMessage({ minLength: 3 })
     }]);
   });
 
@@ -66,7 +66,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/maxLength",
       instanceLocation: "#",
-      message: localization.getMaxLengthErrorMessage(3)
+      message: localization.getStringErrorMessage({ maxLength: 3 })
     }]);
   });
 
@@ -614,7 +614,7 @@ describe("Error messages", async () => {
       {
         schemaLocation: "https://example.com/main#/pattern",
         instanceLocation: "#",
-        message: localization.getPatternErrorMessage("^[a-z]+$")
+        message: localization.getStringErrorMessage({ pattern: "^[a-z]+$" })
       }
     ]);
   });
@@ -822,7 +822,7 @@ describe("Error messages", async () => {
       {
         schemaLocation: `https://example.com/main#/anyOf/0/minLength`,
         instanceLocation: "#",
-        message: localization.getMinLengthErrorMessage(5)
+        message: localization.getStringErrorMessage({ minLength: 5 })
       }
     ]);
   });
@@ -883,7 +883,7 @@ describe("Error messages", async () => {
       {
         schemaLocation: "https://example.com/main#/anyOf/1/properties/ID/pattern",
         instanceLocation: "#/ID",
-        message: localization.getPatternErrorMessage("^[0-9\\-]+$")
+        message: localization.getStringErrorMessage({ pattern: "^[0-9\\-]+$" })
       }
     ]);
   });
@@ -1229,7 +1229,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([
       {
         instanceLocation: "#/Foo",
-        message: localization.getPatternErrorMessage("^[a-z]*$"),
+        message: localization.getStringErrorMessage({ pattern: "^[a-z]*$" }),
         schemaLocation: "https://example.com/main#/propertyNames/pattern"
       }
     ]);
@@ -1256,7 +1256,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([
       {
         instanceLocation: "#/Foo",
-        message: localization.getPatternErrorMessage("^[a-z]*$"),
+        message: localization.getStringErrorMessage({ pattern: "^[a-z]*$" }),
         schemaLocation: "https://example.com/main#/propertyNames/pattern"
       }
     ]);
@@ -1283,7 +1283,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([
       {
         instanceLocation: "#*/Foo",
-        message: localization.getPatternErrorMessage("^[a-z]*$"),
+        message: localization.getStringErrorMessage({ pattern: "^[a-z]*$" }),
         schemaLocation: "https://example.com/main#/propertyNames/pattern"
       }
     ]);
@@ -1370,5 +1370,48 @@ describe("Error messages", async () => {
         schemaLocation: "https://example.com/main#/dependentRequired"
       }
     ]);
+  });
+
+  test("minLength/maxLength and pattern test", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      allOf: [
+        { minLength: 3 },
+        { maxLength: 5 },
+        { pattern: "^[a-z]+$" }
+      ]
+    }, schemaUri);
+
+    const instance = "AAAAAAA";
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/allOf/0/minLength",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/allOf/1/maxLength",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/allOf/2/pattern",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+    expect(result.errors).to.eql([{
+      schemaLocation: [
+        "https://example.com/main#/allOf/0/minLength",
+        "https://example.com/main#/allOf/1/maxLength",
+        "https://example.com/main#/allOf/2/pattern"
+      ],
+      instanceLocation: "#",
+      message: localization.getStringErrorMessage({ minLength: 3, maxLength: 5, pattern: "^[a-z]+$" })
+    }]);
   });
 });
