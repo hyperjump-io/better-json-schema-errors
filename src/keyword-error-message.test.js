@@ -40,8 +40,7 @@ describe("Error messages", async () => {
       schemaLocation: "https://example.com/main#/minLength",
       instanceLocation: "#",
       message: localization.getMinLengthErrorMessage(3)
-    }
-    ]);
+    }]);
   });
 
   test("maxLength", async () => {
@@ -68,8 +67,7 @@ describe("Error messages", async () => {
       schemaLocation: "https://example.com/main#/maxLength",
       instanceLocation: "#",
       message: localization.getMaxLengthErrorMessage(3)
-    }
-    ]);
+    }]);
   });
 
   test("type", async () => {
@@ -96,8 +94,7 @@ describe("Error messages", async () => {
       schemaLocation: "https://example.com/main#/type",
       instanceLocation: "#",
       message: localization.getTypeErrorMessage("number", "string")
-    }
-    ]);
+    }]);
   });
 
   test("maxmimum", async () => {
@@ -123,9 +120,8 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/maximum",
       instanceLocation: "#",
-      message: localization.getMaximumErrorMessage(10)
-    }
-    ]);
+      message: localization.getNumberErrorMessage({ maximum: 10 })
+    }]);
   });
 
   test("mimimum", async () => {
@@ -151,9 +147,8 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minimum",
       instanceLocation: "#",
-      message: localization.getMinimumErrorMessage(10)
-    }
-    ]);
+      message: localization.getNumberErrorMessage({ minimum: 10 })
+    }]);
   });
 
   test("exclusiveMaximum", async () => {
@@ -179,9 +174,8 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/exclusiveMaximum",
       instanceLocation: "#",
-      message: localization.getExclusiveMaximumErrorMessage(10)
-    }
-    ]);
+      message: localization.getNumberErrorMessage({ maximum: 10, exclusiveMaximum: true })
+    }]);
   });
 
   test("exclusiveMinimum", async () => {
@@ -207,9 +201,119 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/exclusiveMinimum",
       instanceLocation: "#",
-      message: localization.getExclusiveMinimumErrorMessage(10)
-    }
-    ]);
+      message: localization.getNumberErrorMessage({ minimum: 10, exclusiveMinimum: true })
+    }]);
+  });
+
+  test("Combine multiple minimum keywords", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      allOf: [
+        { minimum: 2 },
+        { minimum: 3 }
+      ]
+    }, schemaUri);
+
+    const instance = 1;
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/allOf/0/minimum",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/allOf/1/minimum",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+    expect(result.errors).to.eql([{
+      schemaLocation: [
+        "https://example.com/main#/allOf/0/minimum",
+        "https://example.com/main#/allOf/1/minimum"
+      ],
+      instanceLocation: "#",
+      message: localization.getNumberErrorMessage({ minimum: 3 })
+    }]);
+  });
+
+  test("Combine multiple maximum keywords", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      allOf: [
+        { maximum: 5 },
+        { maximum: 6 }
+      ]
+    }, schemaUri);
+
+    const instance = 42;
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/allOf/0/maximum",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/allOf/1/maximum",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+    expect(result.errors).to.eql([{
+      schemaLocation: [
+        "https://example.com/main#/allOf/0/maximum",
+        "https://example.com/main#/allOf/1/maximum"
+      ],
+      instanceLocation: "#",
+      message: localization.getNumberErrorMessage({ maximum: 5 })
+    }]);
+  });
+
+  test("minimum/maximum range", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      allOf: [
+        { minimum: 3 },
+        { maximum: 5 }
+      ]
+    }, schemaUri);
+
+    const instance = 42;
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/allOf/0/minimum",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/allOf/1/maximum",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+    expect(result.errors).to.eql([{
+      schemaLocation: [
+        "https://example.com/main#/allOf/0/minimum",
+        "https://example.com/main#/allOf/1/maximum"
+      ],
+      instanceLocation: "#",
+      message: localization.getNumberErrorMessage({ minimum: 3, maximum: 5 })
+    }]);
   });
 
   test("required", async () => {
@@ -237,8 +341,7 @@ describe("Error messages", async () => {
       schemaLocation: "https://example.com/main#/required",
       instanceLocation: "#",
       message: localization.getRequiredErrorMessage("#", ["baz"])
-    }
-    ]);
+    }]);
   });
 
   test("multipleOf", async () => {
@@ -266,8 +369,7 @@ describe("Error messages", async () => {
       schemaLocation: "https://example.com/main#/multipleOf",
       instanceLocation: "#",
       message: localization.getMultipleOfErrorMessage(5)
-    }
-    ]);
+    }]);
   });
 
   test("maxProperties", async () => {
@@ -295,8 +397,7 @@ describe("Error messages", async () => {
       schemaLocation: "https://example.com/main#/maxProperties",
       instanceLocation: "#",
       message: localization.getMaxPropertiesErrorMessage(2)
-    }
-    ]);
+    }]);
   });
 
   test("minProperties", async () => {
@@ -324,8 +425,7 @@ describe("Error messages", async () => {
       schemaLocation: "https://example.com/main#/minProperties",
       instanceLocation: "#",
       message: localization.getMinPropertiesErrorMessage(2)
-    }
-    ]);
+    }]);
   });
 
   test("const", async () => {
@@ -353,8 +453,7 @@ describe("Error messages", async () => {
       schemaLocation: "https://example.com/main#/const",
       instanceLocation: "#",
       message: localization.getConstErrorMessage(2)
-    }
-    ]);
+    }]);
   });
 
   test("enum", async () => {
@@ -409,8 +508,7 @@ describe("Error messages", async () => {
       schemaLocation: "https://example.com/main#/maxItems",
       instanceLocation: "#",
       message: localization.getMaxItemsErrorMessage(3)
-    }
-    ]);
+    }]);
   });
 
   test("minItems", async () => {
@@ -437,8 +535,7 @@ describe("Error messages", async () => {
       schemaLocation: "https://example.com/main#/minItems",
       instanceLocation: "#",
       message: localization.getMinItemsErrorMessage(3)
-    }
-    ]);
+    }]);
   });
 
   test("uniqueItems", async () => {
@@ -465,8 +562,7 @@ describe("Error messages", async () => {
       schemaLocation: "https://example.com/main#/uniqueItems",
       instanceLocation: "#",
       message: localization.getUniqueItemsErrorMessage()
-    }
-    ]);
+    }]);
   });
 
   test("format: email", async () => {
@@ -602,7 +698,8 @@ describe("Error messages", async () => {
         instanceLocation: "#/2",
         message: localization.getTypeErrorMessage("string", "number"),
         schemaLocation: "https://example.com/main#/prefixItems/2/type"
-      }]);
+      }
+    ]);
   });
 
   test("items only validates values not evaluated by prefixItems", async () => {
@@ -929,7 +1026,7 @@ describe("Error messages", async () => {
       {
         schemaLocation: "https://example.com/main#/$defs/numberSchema/minimum",
         instanceLocation: "#/foo",
-        message: localization.getMinimumErrorMessage(10)
+        message: localization.getNumberErrorMessage({ minimum: 10 })
       }
     ]);
   });
@@ -1019,7 +1116,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([
       {
         instanceLocation: "#",
-        message: localization.getMinimumErrorMessage(0),
+        message: localization.getNumberErrorMessage({ minimum: 0 }),
         schemaLocation: "https://example.com/main#/then/minimum"
       }
     ]);
@@ -1047,7 +1144,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([
       {
         instanceLocation: "#",
-        message: localization.getMinimumErrorMessage(0),
+        message: localization.getNumberErrorMessage({ minimum: 0 }),
         schemaLocation: "https://example.com/main#/else/minimum"
       }
     ]);
