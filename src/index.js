@@ -49,7 +49,6 @@ import additionalPropertiesErrorHandler from "./error-handlers/additionalPropert
 import arrayRangeErrorHandler from "./error-handlers/array-range-handler.js";
 import constErrorHandler from "./error-handlers/const.js";
 import containsErrorHandler from "./error-handlers/contains.js";
-import dependentRequiredErrorHandler from "./error-handlers/dependentRequired.js";
 import enumErrorHandler from "./error-handlers/enum.js";
 import formatErrorHandler from "./error-handlers/format.js";
 import multipleOfErrorHandler from "./error-handlers/multipleOf.js";
@@ -117,7 +116,6 @@ addErrorHandler(anyOfErrorHandler);
 addErrorHandler(additionalPropertiesErrorHandler);
 addErrorHandler(constErrorHandler);
 addErrorHandler(containsErrorHandler);
-addErrorHandler(dependentRequiredErrorHandler);
 addErrorHandler(enumErrorHandler);
 addErrorHandler(formatErrorHandler);
 addErrorHandler(arrayRangeErrorHandler);
