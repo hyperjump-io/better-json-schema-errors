@@ -46,15 +46,12 @@ import uniqueItems from "./normalization-handlers/uniqueItems.js";
 // Error Handlers
 import anyOfErrorHandler from "./error-handlers/anyOf.js";
 import additionalPropertiesErrorHandler from "./error-handlers/additionalProperties.js";
+import arrayRangeErrorHandler from "./error-handlers/array-range-handler.js";
 import constErrorHandler from "./error-handlers/const.js";
 import containsErrorHandler from "./error-handlers/contains.js";
 import dependentRequiredErrorHandler from "./error-handlers/dependentRequired.js";
 import enumErrorHandler from "./error-handlers/enum.js";
 import formatErrorHandler from "./error-handlers/format.js";
-import maxItemsErrorHandler from "./error-handlers/maxItems.js";
-import minItemsErrorHandler from "./error-handlers/minItems.js";
-import maxPropertiesErrorHandler from "./error-handlers/maxProperties.js";
-import minPropertiesErrorHandler from "./error-handlers/minProperties.js";
 import multipleOfErrorHandler from "./error-handlers/multipleOf.js";
 import notErrorHandler from "./error-handlers/not.js";
 import numberRangeHandler from "./error-handlers/number-range-handler.js";
@@ -63,6 +60,7 @@ import typeErrorHandler from "./error-handlers/type.js";
 import uniqueItemsErrorHandler from "./error-handlers/uniqueItems.js";
 import stringErrorHandler from "./error-handlers/string-handler.js";
 import patternErrorHandler from "./error-handlers/pattern.js";
+import propertiesRangeHandler from "./error-handlers/properties-range-handler.js";
 
 /**
  * @import { betterJsonSchemaErrors } from "./index.d.ts"
@@ -122,10 +120,7 @@ addErrorHandler(containsErrorHandler);
 addErrorHandler(dependentRequiredErrorHandler);
 addErrorHandler(enumErrorHandler);
 addErrorHandler(formatErrorHandler);
-addErrorHandler(maxItemsErrorHandler);
-addErrorHandler(minItemsErrorHandler);
-addErrorHandler(maxPropertiesErrorHandler);
-addErrorHandler(minPropertiesErrorHandler);
+addErrorHandler(arrayRangeErrorHandler);
 addErrorHandler(multipleOfErrorHandler);
 addErrorHandler(notErrorHandler);
 addErrorHandler(numberRangeHandler);
@@ -134,6 +129,7 @@ addErrorHandler(typeErrorHandler);
 addErrorHandler(uniqueItemsErrorHandler);
 addErrorHandler(stringErrorHandler);
 addErrorHandler(patternErrorHandler);
+addErrorHandler(propertiesRangeHandler);
 
 export { setNormalizationHandler } from "./normalized-output.js";
 export { addErrorHandler } from "./error-handling.js";
