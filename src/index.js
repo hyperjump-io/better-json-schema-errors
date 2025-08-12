@@ -61,7 +61,8 @@ import numberRangeHandler from "./error-handlers/number-range-handler.js";
 import requiredErrorHandler from "./error-handlers/required.js";
 import typeErrorHandler from "./error-handlers/type.js";
 import uniqueItemsErrorHandler from "./error-handlers/uniqueItems.js";
-import stringHandler from "./error-handlers/string-handler.js";
+import stringErrorHandler from "./error-handlers/string-handler.js";
+import patternErrorHandler from "./error-handlers/pattern.js";
 
 /**
  * @import { betterJsonSchemaErrors } from "./index.d.ts"
@@ -131,7 +132,8 @@ addErrorHandler(numberRangeHandler);
 addErrorHandler(requiredErrorHandler);
 addErrorHandler(typeErrorHandler);
 addErrorHandler(uniqueItemsErrorHandler);
-addErrorHandler(stringHandler);
+addErrorHandler(stringErrorHandler);
+addErrorHandler(patternErrorHandler);
 
 export { setNormalizationHandler } from "./normalized-output.js";
 export { addErrorHandler } from "./error-handling.js";

@@ -37,17 +37,6 @@ const stringHandler = async (normalizedErrors, instance, localization) => {
     constraints.maxLength = Math.min(constraints.maxLength ?? Number.MAX_VALUE, maxLength);
   }
 
-  for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/pattern"]) {
-    if (!normalizedErrors["https://json-schema.org/keyword/pattern"][schemaLocation]) {
-      failedSchemaLocations.push(schemaLocation);
-    }
-
-    const keyword = await getSchema(schemaLocation);
-    /** @type string */
-    const pattern = Schema.value(keyword);
-    constraints.pattern = pattern;
-  }
-
   if (failedSchemaLocations.length > 0) {
     return [
       {

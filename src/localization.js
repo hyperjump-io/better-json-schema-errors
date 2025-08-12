@@ -18,7 +18,6 @@ import { FluentBundle, FluentResource } from "@fluent/bundle";
  * @typedef {{
  *   minLength?: number;
  *   maxLength?: number;
- *   pattern?: string;
  * }} StringConstraints
  */
 
@@ -119,10 +118,6 @@ export class Localization {
       messages.push(this._formatMessage("string-error-maxLength", constraints));
     }
 
-    if (constraints.pattern) {
-      messages.push(this._formatMessage("string-error-pattern", constraints));
-    }
-
     return this._formatMessage("string-error", {
       constraints: new Intl.ListFormat(this.locale, { type: "conjunction" }).format(messages)
     });
@@ -174,6 +169,11 @@ export class Localization {
   /** @type (format: string) => string */
   getFormatErrorMessage(format) {
     return this._formatMessage("format-error", { format });
+  }
+
+  /** @type (pattern: string) => string */
+  getPatternErrorMessage(pattern) {
+    return this._formatMessage("pattern-error", { pattern });
   }
 
   /** @type (constraints: ContainsConstraints) => string */

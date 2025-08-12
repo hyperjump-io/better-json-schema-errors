@@ -614,7 +614,7 @@ describe("Error messages", async () => {
       {
         schemaLocation: "https://example.com/main#/pattern",
         instanceLocation: "#",
-        message: localization.getStringErrorMessage({ pattern: "^[a-z]+$" })
+        message: localization.getPatternErrorMessage("^[a-z]+$")
       }
     ]);
   });
@@ -883,7 +883,7 @@ describe("Error messages", async () => {
       {
         schemaLocation: "https://example.com/main#/anyOf/1/properties/ID/pattern",
         instanceLocation: "#/ID",
-        message: localization.getStringErrorMessage({ pattern: "^[0-9\\-]+$" })
+        message: localization.getPatternErrorMessage("^[0-9\\-]+$")
       }
     ]);
   });
@@ -1355,7 +1355,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([
       {
         instanceLocation: "#/Foo",
-        message: localization.getStringErrorMessage({ pattern: "^[a-z]*$" }),
+        message: localization.getPatternErrorMessage("^[a-z]*$"),
         schemaLocation: "https://example.com/main#/propertyNames/pattern"
       }
     ]);
@@ -1382,7 +1382,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([
       {
         instanceLocation: "#/Foo",
-        message: localization.getStringErrorMessage({ pattern: "^[a-z]*$" }),
+        message: localization.getPatternErrorMessage("^[a-z]*$"),
         schemaLocation: "https://example.com/main#/propertyNames/pattern"
       }
     ]);
@@ -1409,7 +1409,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([
       {
         instanceLocation: "#*/Foo",
-        message: localization.getStringErrorMessage({ pattern: "^[a-z]*$" }),
+        message: localization.getPatternErrorMessage("^[a-z]*$"),
         schemaLocation: "https://example.com/main#/propertyNames/pattern"
       }
     ]);
@@ -1503,8 +1503,7 @@ describe("Error messages", async () => {
       $schema: "https://json-schema.org/draft/2020-12/schema",
       allOf: [
         { minLength: 3 },
-        { maxLength: 5 },
-        { pattern: "^[a-z]+$" }
+        { maxLength: 5 }
       ]
     }, schemaUri);
 
@@ -1521,10 +1520,6 @@ describe("Error messages", async () => {
         {
           absoluteKeywordLocation: "https://example.com/main#/allOf/1/maxLength",
           instanceLocation: "#"
-        },
-        {
-          absoluteKeywordLocation: "https://example.com/main#/allOf/2/pattern",
-          instanceLocation: "#"
         }
       ]
     };
@@ -1533,11 +1528,10 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: [
         "https://example.com/main#/allOf/0/minLength",
-        "https://example.com/main#/allOf/1/maxLength",
-        "https://example.com/main#/allOf/2/pattern"
+        "https://example.com/main#/allOf/1/maxLength"
       ],
       instanceLocation: "#",
-      message: localization.getStringErrorMessage({ minLength: 3, maxLength: 5, pattern: "^[a-z]+$" })
+      message: localization.getStringErrorMessage({ minLength: 3, maxLength: 5 })
     }]);
   });
 });

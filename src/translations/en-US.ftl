@@ -3,7 +3,6 @@ type-error = The instance should be of type {$expected} but found {$actual}.
 string-error = Expected a string {$constraints}.
 string-error-minLength = at least {$minLength} characters long
 string-error-maxLength = at most {$maxLength} characters long
-string-error-pattern = to match the pattern {$pattern}
 
 number-error = Expected a number {$constraints}.
 number-error-minimum = greater than {$minimum}
@@ -20,6 +19,7 @@ max-items-error = The instance should contain a maximum of {$limit} items in the
 min-items-error = The instance should contain a minimum of {$limit} items in the array.
 unique-items-error = The instance should have unique items in the array.
 format-error = The instance should match the format: {$format}.
+pattern-error = The instance should match the pattern: {$pattern}.
 
 contains-error-min = The array must contain at least {$minContains -> 
   [one] item that passes
