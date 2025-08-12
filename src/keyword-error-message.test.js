@@ -396,7 +396,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/maxProperties",
       instanceLocation: "#",
-      message: localization.getMaxPropertiesErrorMessage(2)
+      message: localization.getPropertiesErrorMessage({ maxProperties: 2 })
     }]);
   });
 
@@ -424,7 +424,43 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minProperties",
       instanceLocation: "#",
-      message: localization.getMinPropertiesErrorMessage(2)
+      message: localization.getPropertiesErrorMessage({ minProperties: 2 })
+    }]);
+  });
+
+  test("max-min Properties", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      maxProperties: 3,
+      minProperties: 2
+
+    }, schemaUri);
+
+    const instance = { foo: 1 };
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/maxProperties",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/minProperties",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+    expect(result.errors).to.eql([{
+      schemaLocation: [
+        "https://example.com/main#/minProperties",
+        "https://example.com/main#/maxProperties"
+      ],
+      instanceLocation: "#",
+      message: localization.getPropertiesErrorMessage({ maxProperties: 3, minProperties: 2 })
     }]);
   });
 
@@ -507,7 +543,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/maxItems",
       instanceLocation: "#",
-      message: localization.getMaxItemsErrorMessage(3)
+      message: localization.getArrayErrorMessage({ maxItems: 3 })
     }]);
   });
 
@@ -534,7 +570,42 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minItems",
       instanceLocation: "#",
-      message: localization.getMinItemsErrorMessage(3)
+      message: localization.getArrayErrorMessage({ minItems: 3 })
+    }]);
+  });
+
+  test("minItems and maxItems", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      minItems: 3,
+      maxItems: 4
+    }, schemaUri);
+
+    const instance = [1, 3];
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/minItems",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/maxItems",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+    expect(result.errors).to.eql([{
+      schemaLocation: [
+        "https://example.com/main#/minItems",
+        "https://example.com/main#/maxItems"
+      ],
+      instanceLocation: "#",
+      message: localization.getArrayErrorMessage({ minItems: 3, maxItems: 4 })
     }]);
   });
 

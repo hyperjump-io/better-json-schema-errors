@@ -12,11 +12,17 @@ number-error-exclusive-maximum = less than or equal to {$maximum}
 
 required-error = "{$instanceLocation}" is missing required property(s): {$missingProperties}.
 multiple-of-error = The instance should be a multiple of {$divisor}.
-max-properties-error = The instance should have a maximum of {$limit} properties.
-min-properties-error = The instance should have a minimum of {$limit} properties.
+
+properties-error = Expected object to have {$constraints}
+properties-error-max = at most {$maxProperties} properties.
+properties-error-min = at least {$minProperties} properties.
+
 const-error = The instance should be equal to {$expectedValue}.
-max-items-error = The instance should contain a maximum of {$limit} items in the array.
-min-items-error = The instance should contain a minimum of {$limit} items in the array.
+
+array-error = Expected the array to have {$constraints}.
+array-error-min = at least {$minItems} items
+array-error-max = at most {$maxItems} items
+
 unique-items-error = The instance should have unique items in the array.
 format-error = The instance should match the format: {$format}.
 pattern-error = The instance should match the pattern: {$pattern}.

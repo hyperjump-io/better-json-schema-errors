@@ -28,6 +28,20 @@ import { FluentBundle, FluentResource } from "@fluent/bundle";
  * }} ContainsConstraints
  */
 
+/**
+ * @typedef {{
+ *   minItems?: number;
+ *   maxItems?: number;
+ * }} ArrayConstraints
+ */
+
+/**
+ * @typedef {{
+ *   maxProperties?: number;
+ *   minProperties?: number;
+ * }} PropertiesConstraints
+ */
+
 export class Localization {
   /**
    * @param {string} locale
@@ -136,29 +150,45 @@ export class Localization {
     return this._formatMessage("multiple-of-error", { divisor });
   }
 
-  /** @type (limit: number) => string */
-  getMaxPropertiesErrorMessage(limit) {
-    return this._formatMessage("max-properties-error", { limit });
-  }
-
-  /** @type (limit: number) => string */
-  getMinPropertiesErrorMessage(limit) {
-    return this._formatMessage("min-properties-error", { limit });
-  }
-
   /** @type (expectedValue: FluentVariable) => string */
   getConstErrorMessage(expectedValue) {
     return this._formatMessage("const-error", { expectedValue });
   }
 
-  /** @type (limit: number) => string */
-  getMaxItemsErrorMessage(limit) {
-    return this._formatMessage("max-items-error", { limit });
+  /** @type (constraints: PropertiesConstraints) => string */
+  getPropertiesErrorMessage(constraints) {
+    /** @type string[] */
+    const messages = [];
+
+    if (constraints.minProperties) {
+      messages.push(this._formatMessage("properties-error-min", constraints));
+    }
+
+    if (constraints.maxProperties) {
+      messages.push(this._formatMessage("properties-error-max", constraints));
+    }
+
+    return this._formatMessage("properties-error", {
+      constraints: new Intl.ListFormat(this.locale, { type: "conjunction" }).format(messages)
+    });
   }
 
-  /** @type (limit: number) => string */
-  getMinItemsErrorMessage(limit) {
-    return this._formatMessage("min-items-error", { limit });
+  /** @type (constraints: ArrayConstraints) => string */
+  getArrayErrorMessage(constraints) {
+    /** @type string[] */
+    const messages = [];
+
+    if (constraints.minItems !== undefined) {
+      messages.push(this._formatMessage("array-error-min", constraints));
+    }
+
+    if (constraints.maxItems !== undefined) {
+      messages.push(this._formatMessage("array-error-max", constraints));
+    }
+
+    return this._formatMessage("array-error", {
+      constraints: new Intl.ListFormat(this.locale, { type: "conjunction" }).format(messages)
+    });
   }
 
   /** @type () => string */
