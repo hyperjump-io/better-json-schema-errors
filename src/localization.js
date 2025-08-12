@@ -22,6 +22,13 @@ import { FluentBundle, FluentResource } from "@fluent/bundle";
  * }} StringConstraints
  */
 
+/**
+ * @typedef {{
+ *   maxContains?: number;
+ *   minContains: number;
+ * }} ContainsConstraints
+ */
+
 export class Localization {
   /**
    * @param {string} locale
@@ -169,9 +176,13 @@ export class Localization {
     return this._formatMessage("format-error", { format });
   }
 
-  /** @type () => string */
-  getContainsErrorMessage() {
-    return this._formatMessage("contains-error");
+  /** @type (constraints: ContainsConstraints) => string */
+  getContainsErrorMessage(constraints) {
+    if (constraints.maxContains) {
+      return this._formatMessage("contains-error-min-max", constraints);
+    } else {
+      return this._formatMessage("contains-error-min", constraints);
+    }
   }
 
   /** @type () => string */
