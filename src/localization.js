@@ -4,6 +4,16 @@ import { FluentBundle, FluentResource } from "@fluent/bundle";
 /**
  * @import { FluentVariable} from "@fluent/bundle"
  */
+
+/**
+ * @typedef {{
+ *   minimum?: number;
+ *   exclusiveMinimum?: boolean;
+ *   maximum?: number;
+ *   exclusiveMaximum?: boolean;
+ * }} NumberConstraints
+ */
+
 export class Localization {
   /**
    * @param {string} locale
@@ -65,24 +75,30 @@ export class Localization {
     return this._formatMessage("max-length-error", { limit });
   }
 
-  /** @type (limit: number) => string */
-  getMaximumErrorMessage(limit) {
-    return this._formatMessage("maximum-error", { limit });
-  }
+  /** @type (constraints: NumberConstraints) => string */
+  getNumberErrorMessage(constraints) {
+    /** @type string[] */
+    const messages = [];
 
-  /** @type (limit: number) => string */
-  getMinimumErrorMessage(limit) {
-    return this._formatMessage("minimum-error", { limit });
-  }
+    if (constraints.minimum !== undefined) {
+      if (constraints.exclusiveMinimum) {
+        messages.push(this._formatMessage("number-error-exclusive-minimum", constraints));
+      } else {
+        messages.push(this._formatMessage("number-error-minimum", constraints));
+      }
+    }
 
-  /** @type (limit: number) => string */
-  getExclusiveMinimumErrorMessage(limit) {
-    return this._formatMessage("exclusive-minimum-error", { limit });
-  }
+    if (constraints.maximum !== undefined) {
+      if (constraints.exclusiveMaximum) {
+        messages.push(this._formatMessage("number-error-exclusive-maximum", constraints));
+      } else {
+        messages.push(this._formatMessage("number-error-maximum", constraints));
+      }
+    }
 
-  /** @type (limit: number) => string */
-  getExclusiveMaximumErrorMessage(limit) {
-    return this._formatMessage("exclusive-maximum-error", { limit });
+    return this._formatMessage("number-error", {
+      constraints: new Intl.ListFormat(this.locale, { type: "conjunction" }).format(messages)
+    });
   }
 
   /** @type (instanceLocation: string, missingProperties: string[]) => string */

@@ -1,10 +1,13 @@
 type-error = The instance should be of type {$expected} but found {$actual}.
 min-length-error = The instance should be atleast {$limit} characters.
 max-length-error = The instance should be atmost {$limit} characters long.
-maximum-error = The instance should be less than or equal to {$limit}.
-minimum-error = The instance should be greater than or equal to {$limit}.
-exclusive-maximum-error = The instance should be less than {$limit}.
-exclusive-minimum-error = The instance should be greater than {$limit}.
+
+number-error = Expected a number {$constraints}.
+number-error-minimum = greater than {$minimum}
+number-error-exclusive-minimum = greater than or equal to {$minimum}
+number-error-maximum = greater than {$maximum}
+number-error-exclusive-maximum = less than or equal to {$maximum}
+
 required-error = "{$instanceLocation}" is missing required property(s): {$missingProperties}.
 multiple-of-error = The instance should be a multiple of {$divisor}.
 max-properties-error = The instance should have a maximum of {$limit} properties.
