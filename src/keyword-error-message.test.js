@@ -39,7 +39,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/minLength",
       instanceLocation: "#",
-      message: localization.getMinLengthErrorMessage(3)
+      message: localization.getStringErrorMessage({ minLength: 3 })
     }]);
   });
 
@@ -66,7 +66,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/maxLength",
       instanceLocation: "#",
-      message: localization.getMaxLengthErrorMessage(3)
+      message: localization.getStringErrorMessage({ maxLength: 3 })
     }]);
   });
 
@@ -822,7 +822,7 @@ describe("Error messages", async () => {
       {
         schemaLocation: `https://example.com/main#/anyOf/0/minLength`,
         instanceLocation: "#",
-        message: localization.getMinLengthErrorMessage(5)
+        message: localization.getStringErrorMessage({ minLength: 5 })
       }
     ]);
   });
@@ -1037,8 +1037,7 @@ describe("Error messages", async () => {
       contains: {
         type: "number",
         multipleOf: 2
-      },
-      minContains: 1
+      }
     }, schemaUri);
     const instance = ["", 3, 5];
     const output = {
@@ -1073,7 +1072,134 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([
       {
         instanceLocation: "#",
-        message: localization.getContainsErrorMessage(),
+        message: localization.getContainsErrorMessage({ minContains: 1 }),
+        schemaLocation: "https://example.com/main#/contains"
+      },
+      {
+        instanceLocation: "#/0",
+        message: localization.getTypeErrorMessage("number", "string"),
+        schemaLocation: "https://example.com/main#/contains/type"
+      },
+      {
+        instanceLocation: "#/1",
+        message: localization.getMultipleOfErrorMessage(2),
+        schemaLocation: "https://example.com/main#/contains/multipleOf"
+      },
+      {
+        instanceLocation: "#/2",
+        message: localization.getMultipleOfErrorMessage(2),
+        schemaLocation: "https://example.com/main#/contains/multipleOf"
+      }
+    ]);
+  });
+
+  test("normalized output for a failing 'contains' keyword with only minContains", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      contains: {
+        type: "number",
+        multipleOf: 2
+      },
+      minContains: 2
+    }, schemaUri);
+    const instance = ["", 3, 5];
+    const output = {
+      valid: false,
+      errors: [
+        {
+          valid: false,
+          keywordLocation: "/contains",
+          instanceLocation: "#",
+          absoluteKeywordLocation: "https://example.com/main#/contains",
+          errors: [
+            {
+              valid: false,
+              instanceLocation: "#/0",
+              absoluteKeywordLocation: "https://example.com/main#/contains/type"
+            },
+            {
+              valid: false,
+              instanceLocation: "#/1",
+              absoluteKeywordLocation: "https://example.com/main#/contains/multipleOf"
+            },
+            {
+              valid: false,
+              instanceLocation: "#/2",
+              absoluteKeywordLocation: "https://example.com/main#/contains/multipleOf"
+            }
+          ]
+        }
+      ]
+    };
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+    expect(result.errors).to.eql([
+      {
+        instanceLocation: "#",
+        message: localization.getContainsErrorMessage({ minContains: 2 }),
+        schemaLocation: "https://example.com/main#/contains"
+      },
+      {
+        instanceLocation: "#/0",
+        message: localization.getTypeErrorMessage("number", "string"),
+        schemaLocation: "https://example.com/main#/contains/type"
+      },
+      {
+        instanceLocation: "#/1",
+        message: localization.getMultipleOfErrorMessage(2),
+        schemaLocation: "https://example.com/main#/contains/multipleOf"
+      },
+      {
+        instanceLocation: "#/2",
+        message: localization.getMultipleOfErrorMessage(2),
+        schemaLocation: "https://example.com/main#/contains/multipleOf"
+      }
+    ]);
+  });
+
+  test("`contains` with `minContains` and `maxContains` keyword", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      contains: {
+        type: "number",
+        multipleOf: 2
+      },
+      minContains: 2,
+      maxContains: 4
+    }, schemaUri);
+    const instance = ["", 3, 5];
+    const output = {
+      valid: false,
+      errors: [
+        {
+          valid: false,
+          keywordLocation: "/contains",
+          instanceLocation: "#",
+          absoluteKeywordLocation: "https://example.com/main#/contains",
+          errors: [
+            {
+              valid: false,
+              instanceLocation: "#/0",
+              absoluteKeywordLocation: "https://example.com/main#/contains/type"
+            },
+            {
+              valid: false,
+              instanceLocation: "#/1",
+              absoluteKeywordLocation: "https://example.com/main#/contains/multipleOf"
+            },
+            {
+              valid: false,
+              instanceLocation: "#/2",
+              absoluteKeywordLocation: "https://example.com/main#/contains/multipleOf"
+            }
+          ]
+        }
+      ]
+    };
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+    expect(result.errors).to.eql([
+      {
+        instanceLocation: "#",
+        message: localization.getContainsErrorMessage({ minContains: 2, maxContains: 4 }),
         schemaLocation: "https://example.com/main#/contains"
       },
       {
@@ -1370,5 +1496,42 @@ describe("Error messages", async () => {
         schemaLocation: "https://example.com/main#/dependentRequired"
       }
     ]);
+  });
+
+  test("minLength/maxLength and pattern test", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      allOf: [
+        { minLength: 3 },
+        { maxLength: 5 }
+      ]
+    }, schemaUri);
+
+    const instance = "AAAAAAA";
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/allOf/0/minLength",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/allOf/1/maxLength",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+    expect(result.errors).to.eql([{
+      schemaLocation: [
+        "https://example.com/main#/allOf/0/minLength",
+        "https://example.com/main#/allOf/1/maxLength"
+      ],
+      instanceLocation: "#",
+      message: localization.getStringErrorMessage({ minLength: 3, maxLength: 5 })
+    }]);
   });
 });

@@ -55,15 +55,14 @@ import maxItemsErrorHandler from "./error-handlers/maxItems.js";
 import minItemsErrorHandler from "./error-handlers/minItems.js";
 import maxPropertiesErrorHandler from "./error-handlers/maxProperties.js";
 import minPropertiesErrorHandler from "./error-handlers/minProperties.js";
-import minLengthErrorHandler from "./error-handlers/minLength.js";
 import multipleOfErrorHandler from "./error-handlers/multipleOf.js";
 import notErrorHandler from "./error-handlers/not.js";
 import numberRangeHandler from "./error-handlers/number-range-handler.js";
-import patternErrorHandler from "./error-handlers/pattern.js";
 import requiredErrorHandler from "./error-handlers/required.js";
 import typeErrorHandler from "./error-handlers/type.js";
 import uniqueItemsErrorHandler from "./error-handlers/uniqueItems.js";
-import maxLengthErrorHandler from "./error-handlers/maxLength.js";
+import stringErrorHandler from "./error-handlers/string-handler.js";
+import patternErrorHandler from "./error-handlers/pattern.js";
 
 /**
  * @import { betterJsonSchemaErrors } from "./index.d.ts"
@@ -127,15 +126,14 @@ addErrorHandler(maxItemsErrorHandler);
 addErrorHandler(minItemsErrorHandler);
 addErrorHandler(maxPropertiesErrorHandler);
 addErrorHandler(minPropertiesErrorHandler);
-addErrorHandler(minLengthErrorHandler);
-addErrorHandler(maxLengthErrorHandler);
 addErrorHandler(multipleOfErrorHandler);
 addErrorHandler(notErrorHandler);
 addErrorHandler(numberRangeHandler);
-addErrorHandler(patternErrorHandler);
 addErrorHandler(requiredErrorHandler);
 addErrorHandler(typeErrorHandler);
 addErrorHandler(uniqueItemsErrorHandler);
+addErrorHandler(stringErrorHandler);
+addErrorHandler(patternErrorHandler);
 
 export { setNormalizationHandler } from "./normalized-output.js";
 export { addErrorHandler } from "./error-handling.js";
