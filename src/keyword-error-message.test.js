@@ -338,9 +338,11 @@ describe("Error messages", async () => {
 
     const result = await betterJsonSchemaErrors(output, schemaUri, instance);
     expect(result.errors).to.eql([{
-      schemaLocation: "https://example.com/main#/required",
+      schemaLocation: [
+        "https://example.com/main#/required"
+      ],
       instanceLocation: "#",
-      message: localization.getRequiredErrorMessage("#", ["baz"])
+      message: localization.getRequiredErrorMessage(["baz"])
     }]);
   });
 
@@ -1563,8 +1565,10 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([
       {
         instanceLocation: "#",
-        message: localization.getDependentRequiredErrorMessage("foo", ["baz"]),
-        schemaLocation: "https://example.com/main#/dependentRequired"
+        message: localization.getRequiredErrorMessage(["baz"]),
+        schemaLocation: [
+          "https://example.com/main#/dependentRequired"
+        ]
       }
     ]);
   });

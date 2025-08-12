@@ -10,7 +10,7 @@ number-error-exclusive-minimum = greater than or equal to {$minimum}
 number-error-maximum = less than {$maximum}
 number-error-exclusive-maximum = less than or equal to {$maximum}
 
-required-error = "{$instanceLocation}" is missing required property(s): {$missingProperties}.
+required-error = This instance is missing required property(s): {$missingProperties}.
 multiple-of-error = The instance should be a multiple of {$divisor}.
 
 properties-error = Expected object to have {$constraints}
@@ -38,7 +38,6 @@ contains-error-min-max = The array must contain at least {$minContains} and at m
 
 not-error = The instance is not allowed to be used in this schema.
 additional-properties-error = The property "{$propertyName}" is not allowed.
-dependent-required-error = Property "{$property}" requires property(s): {$missingDependents}.
 enum-error = { $variant ->
 	[suggestion] Unexpected value {$instanceValue}. Did you mean {$suggestion}?
 	*[fallback] Unexpected value {$instanceValue}. Expected one of: {$allowedValues}.

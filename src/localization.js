@@ -137,10 +137,9 @@ export class Localization {
     });
   }
 
-  /** @type (instanceLocation: string, missingProperties: string[]) => string */
-  getRequiredErrorMessage(instanceLocation, missingProperties) {
+  /** @type (missingProperties: string[]) => string */
+  getRequiredErrorMessage(missingProperties) {
     return this._formatMessage("required-error", {
-      instanceLocation,
       missingProperties: new Intl.ListFormat(this.locale, { type: "conjunction" }).format(missingProperties)
     });
   }
@@ -223,14 +222,6 @@ export class Localization {
   /** @type (propertyName: string) => string */
   getAdditionalPropertiesErrorMessage(propertyName) {
     return this._formatMessage("additional-properties-error", { propertyName });
-  }
-
-  /** @type (property: string, missingDependents: string[]) => string */
-  getDependentRequiredErrorMessage(property, missingDependents) {
-    return this._formatMessage("dependent-required-error", {
-      property,
-      missingDependents: new Intl.ListFormat(this.locale, { type: "conjunction" }).format(missingDependents)
-    });
   }
 
   /**
