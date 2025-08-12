@@ -1,6 +1,7 @@
 import { getSchema } from "@hyperjump/json-schema/experimental";
-import * as Schema from "@hyperjump/browser";
 import * as Instance from "@hyperjump/json-schema/instance/experimental";
+import * as Schema from "@hyperjump/browser";
+import * as JsonPointer from "@hyperjump/json-pointer";
 import { getErrors } from "../error-handling.js";
 
 /**
@@ -8,24 +9,30 @@ import { getErrors } from "../error-handling.js";
  */
 
 /** @type ErrorHandler */
-const anyOf = async (normalizedErrors, instance, localization) => {
+const anyOfErrorHandler = async (normalizedErrors, instance, localization) => {
   /** @type ErrorObject[] */
   const errors = [];
 
   if (normalizedErrors["https://json-schema.org/keyword/anyOf"]) {
     for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/anyOf"]) {
+      const allAlternatives = normalizedErrors["https://json-schema.org/keyword/anyOf"][schemaLocation];
+      if (typeof allAlternatives === "boolean") {
+        continue;
+      }
+
       /** @type NormalizedOutput[] */
       const alternatives = [];
-      const allAlternatives = /** @type NormalizedOutput[] */ (normalizedErrors["https://json-schema.org/keyword/anyOf"][schemaLocation]);
       for (const alternative of allAlternatives) {
-        if (Object.values(alternative[Instance.uri(instance)]["https://json-schema.org/keyword/type"]).every((valid) => valid)) {
+        if (Object.values(alternative[Instance.uri(instance)]["https://json-schema.org/keyword/type"] ?? {}).every((valid) => valid)) {
           alternatives.push(alternative);
         }
       }
-      // case 1 where no. alternative matched the type of the instance.
+
+      // No alternative matched the type of the instance.
       if (alternatives.length === 0) {
         /** @type Set<string> */
         const expectedTypes = new Set();
+
         for (const alternative of allAlternatives) {
           for (const instanceLocation in alternative) {
             if (instanceLocation === Instance.uri(instance)) {
@@ -37,28 +44,114 @@ const anyOf = async (normalizedErrors, instance, localization) => {
             }
           }
         }
+
         errors.push({
           message: localization.getTypeErrorMessage([...expectedTypes], Instance.typeOf(instance)),
           instanceLocation: Instance.uri(instance),
           schemaLocation: schemaLocation
         });
-      } else if (alternatives.length === 1) { // case 2 when only one type match
-        return getErrors(alternatives[0], instance, localization);
-      } else if (instance.type === "object") {
-        let targetAlternativeIndex = -1;
-        for (const alternative of alternatives) {
-          targetAlternativeIndex++;
+        continue;
+      }
+
+      // Only one alternative matches the type of the instance
+      if (alternatives.length === 1) {
+        errors.push(...await getErrors(alternatives[0], instance, localization));
+        continue;
+      }
+
+      if (instance.type === "object") {
+        const definedProperties = allAlternatives.map((alternative) => {
+          /** @type Set<string> */
+          const alternativeProperties = new Set();
+
           for (const instanceLocation in alternative) {
-            if (instanceLocation !== "#") {
-              return getErrors(alternatives[targetAlternativeIndex], instance, localization);
+            const pointer = instanceLocation.slice(Instance.uri(instance).length + 1);
+            if (pointer.length > 0) {
+              const position = pointer.indexOf("/");
+              const propertyName = pointer.slice(0, position === -1 ? undefined : position);
+              const location = JsonPointer.append(propertyName, Instance.uri(instance));
+              alternativeProperties.add(location);
             }
           }
+
+          return alternativeProperties;
+        });
+
+        const discriminator = definedProperties.reduce((acc, properties) => {
+          return acc.intersection(properties);
+        }, definedProperties[0]);
+
+        const discriminatedAlternatives = alternatives.filter((alternative) => {
+          for (const instanceLocation in alternative) {
+            if (!discriminator.has(instanceLocation)) {
+              continue;
+            }
+
+            let valid = true;
+            for (const keyword in alternative[instanceLocation]) {
+              for (const schemaLocation in alternative[instanceLocation][keyword]) {
+                if (alternative[instanceLocation][keyword][schemaLocation] !== true) {
+                  valid = false;
+                  break;
+                }
+              }
+            }
+            if (valid) {
+              return true;
+            }
+          }
+          return false;
+        });
+
+        // Discriminator match
+        if (discriminatedAlternatives.length === 1) {
+          errors.push(...await getErrors(discriminatedAlternatives[0], instance, localization));
+          continue;
         }
+
+        // Discriminator identified, but none of the alternatives match
+        if (discriminatedAlternatives.length === 0) {
+          // TODO: How do we handle this case?
+        }
+
+        // Last resort, select the alternative with the most properties matching the instance
+        // TODO: We shouldn't use this strategy if alternatives have the same number of matching instances
+        const instanceProperties = new Set(Instance.values(instance)
+          .map((node) => Instance.uri(node)));
+        let maxMatches = -1;
+        let selectedIndex = 0;
+        let index = -1;
+        for (const alternativeProperties of definedProperties) {
+          index++;
+          const matches = alternativeProperties.intersection(instanceProperties).size;
+          if (matches > maxMatches) {
+            selectedIndex = index;
+          }
+        }
+
+        errors.push(...await getErrors(alternatives[selectedIndex], instance, localization));
+        continue;
       }
+
+      // TODO: Handle alternatives with const
+      // TODO: Handle alternatives with enum
+      // TODO: Handle null alternatives
+      // TODO: Handle boolean alternatives
+      // TODO: Handle string alternatives
+      // TODO: Handle array alternatives
+      // TODO: Handle alternatives without a type
+
+      // TODO: If we get here, we don't know what else to do and give a very generic message
+      // Ideally this should be replace by something that can handle whatever case is missing.
+      errors.push({
+        message: localization.getAnyOfErrorMessage(),
+        instanceLocation: Instance.uri(instance),
+        schemaLocation: schemaLocation
+      });
     }
   }
 
   return errors;
 };
 
-export default anyOf;
+export default anyOfErrorHandler;

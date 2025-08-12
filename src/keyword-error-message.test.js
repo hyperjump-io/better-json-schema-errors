@@ -961,7 +961,7 @@ describe("Error messages", async () => {
     ]);
   });
 
-  test.skip("anyOf - const-based discriminator mismatch", async () => {
+  test.skip("anyOf - discriminator with no matches", async () => {
     registerSchema({
       $schema: "https://json-schema.org/draft/2020-12/schema",
       anyOf: [
@@ -1018,6 +1018,65 @@ describe("Error messages", async () => {
         schemaLocation: `https://example.com/main#/anyOf`,
         instanceLocation: "#/type",
         message: `Invalid value. Expected "a", "b". Found "d".`
+      }
+    ]);
+  });
+
+  test("anyOf - discriminator with one match", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      anyOf: [
+        {
+          type: "object",
+          properties: {
+            type: { const: "a" },
+            apple: { type: "string" }
+          },
+          required: ["type"]
+        },
+        {
+          type: "object",
+          properties: {
+            type: { const: "b" },
+            banana: { type: "string" }
+          },
+          required: ["type"]
+        }
+      ]
+    }, schemaUri);
+
+    const instance = {
+      type: "a",
+      apple: 42,
+      banana: "yellow"
+    };
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: `https://example.com/main#/anyOf/0/properties/apple/type`,
+          instanceLocation: "#/apple"
+        },
+        {
+          absoluteKeywordLocation: `https://example.com/main#/anyOf/1/properties/type/const`,
+          instanceLocation: "#/type"
+        },
+        {
+          absoluteKeywordLocation: `https://example.com/main#/anyOf`,
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: `https://example.com/main#/anyOf/0/properties/apple/type`,
+        instanceLocation: "#/apple",
+        message: localization.getTypeErrorMessage("string", "number")
       }
     ]);
   });
