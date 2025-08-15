@@ -85,8 +85,8 @@ export const evaluateSchema = (schemaLocation, instance, context) => {
 /** @type (a: API.NormalizedOutput, b: API.NormalizedOutput) => void */
 const mergeOutput = (a, b) => {
   for (const instanceLocation in b) {
+    a[instanceLocation] ??= {};
     for (const keywordUri in b[instanceLocation]) {
-      a[instanceLocation] ??= {};
       a[instanceLocation][keywordUri] ??= {};
 
       Object.assign(a[instanceLocation][keywordUri], b[instanceLocation][keywordUri]);

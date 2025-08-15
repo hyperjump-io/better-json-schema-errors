@@ -259,4 +259,9 @@ export class Localization {
 
     return this._formatMessage("enum-error", formattedArgs);
   }
+
+  /** @type () => string */
+  getAnyOfErrorMessage() {
+    return this._formatMessage("anyOf-error");
+  }
 }

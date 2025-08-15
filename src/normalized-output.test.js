@@ -138,6 +138,7 @@ describe("Error Output Normalization", async () => {
           "https://example.com/main#/type": true
         }
       },
+      "#/name": {},
       "#/age": {
         "https://json-schema.org/keyword/type": {
           "https://example.com/main#/properties/age/type": false
@@ -213,7 +214,8 @@ describe("Error Output Normalization", async () => {
         "https://json-schema.org/keyword/type": {
           "https://example.com/main#/$defs/profile/properties/name/type": false
         }
-      }
+      },
+      "#/profile/age": {}
     });
   });
 
@@ -313,7 +315,8 @@ describe("Error Output Normalization", async () => {
         "https://json-schema.org/keyword/type": {
           "https://example.com/main#/$defs/profile/properties/name/type": false
         }
-      }
+      },
+      "#/profile/age": {}
     });
   });
 
