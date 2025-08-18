@@ -23,15 +23,33 @@ const anyOfErrorHandler = async (normalizedErrors, instance, localization) => {
       /** @type NormalizedOutput[] */
       const alternatives = [];
       for (const alternative of allAlternatives) {
-        if (Object.values(alternative[Instance.uri(instance)]["https://json-schema.org/keyword/type"] ?? {}).every((valid) => valid)) {
+        const schemaErrors = alternative[Instance.uri(instance)];
+        const isTypeValid = schemaErrors["https://json-schema.org/keyword/type"]
+          ? Object.values(schemaErrors["https://json-schema.org/keyword/type"]).every((valid) => valid)
+          : undefined;
+        const isEnumValid = schemaErrors["https://json-schema.org/keyword/enum"]
+          ? Object.values(schemaErrors["https://json-schema.org/keyword/enum"] ?? {}).every((valid) => valid)
+          : undefined;
+        const isConstValid = schemaErrors["https://json-schema.org/keyword/const"]
+          ? Object.values(schemaErrors["https://json-schema.org/keyword/const"] ?? {}).every((valid) => valid)
+          : undefined;
+
+        if (isTypeValid === true || isEnumValid === true || isConstValid === true) {
+          alternatives.push(alternative);
+        }
+
+        if (isConstValid === undefined && isEnumValid === undefined && isTypeValid === undefined) {
           alternatives.push(alternative);
         }
       }
 
-      // No alternative matched the type of the instance.
+      // No alternative matched the type/enum/const of the instance.
       if (alternatives.length === 0) {
         /** @type Set<string> */
         const expectedTypes = new Set();
+
+        /** @type Set<Json> */
+        const expectedEnums = new Set();
 
         for (const alternative of allAlternatives) {
           for (const instanceLocation in alternative) {
@@ -41,12 +59,27 @@ const anyOfErrorHandler = async (normalizedErrors, instance, localization) => {
                 const expectedType = /** @type string */ (Schema.value(keyword));
                 expectedTypes.add(expectedType);
               }
+              for (const schemaLocation in alternative[instanceLocation]["https://json-schema.org/keyword/enum"]) {
+                const keyword = await getSchema(schemaLocation);
+                const enums = /** @type Json[] */ (Schema.value(keyword));
+                for (const enumValue of enums) {
+                  expectedEnums.add(enumValue);
+                }
+              }
+              for (const schemaLocation in alternative[instanceLocation]["https://json-schema.org/keyword/const"]) {
+                const keyword = await getSchema(schemaLocation);
+                const constValue = /** @type Json */ (Schema.value(keyword));
+                expectedEnums.add(constValue);
+              }
             }
           }
         }
 
         errors.push({
-          message: localization.getTypeErrorMessage([...expectedTypes], Instance.typeOf(instance)),
+          message: localization.getEnumErrorMessage({
+            allowedValues: [...expectedEnums],
+            allowedTypes: [...expectedTypes]
+          }, Instance.value(instance)),
           instanceLocation: Instance.uri(instance),
           schemaLocation: schemaLocation
         });
@@ -73,15 +106,13 @@ const anyOfErrorHandler = async (normalizedErrors, instance, localization) => {
               alternativeProperties.add(location);
             }
           }
-
           return alternativeProperties;
         });
 
         const discriminator = definedProperties.reduce((acc, properties) => {
           return acc.intersection(properties);
         }, definedProperties[0]);
-
-        const discriminatedAlternatives = alternatives.filter((alternative) => {
+        const discriminatedAlternatives = allAlternatives.filter((alternative) => {
           for (const instanceLocation in alternative) {
             if (!discriminator.has(instanceLocation)) {
               continue;
@@ -112,10 +143,11 @@ const anyOfErrorHandler = async (normalizedErrors, instance, localization) => {
         // Discriminator identified, but none of the alternatives match
         if (discriminatedAlternatives.length === 0) {
           // TODO: How do we handle this case?
+          // errors.push(...await getErrors(allAlternatives[0], instance, localization));
         }
 
         // Last resort, select the alternative with the most properties matching the instance
-        // TODO: We shouldn't use this strategy if alternatives have the same number of matching instances
+        // TODO: We shouldn't use this strategy if alternatives have the same number of matching instances "UPDATED"
         const instanceProperties = new Set(Instance.values(instance)
           .map((node) => Instance.uri(node)));
         let maxMatches = -1;

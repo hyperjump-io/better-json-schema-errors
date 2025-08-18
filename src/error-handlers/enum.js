@@ -1,7 +1,6 @@
 import { getSchema } from "@hyperjump/json-schema/experimental";
 import * as Schema from "@hyperjump/browser";
 import * as Instance from "@hyperjump/json-schema/instance/experimental";
-import leven from "leven";
 
 /**
  * @import { ErrorHandler, ErrorObject } from "../index.d.ts"
@@ -18,34 +17,11 @@ const enum_ = async (normalizedErrors, instance, localization) => {
         const keyword = await getSchema(schemaLocation);
 
         /** @type {Array<string>} */
-        const allowedValues = Schema.value(keyword);
+        let allowedValues = Schema.value(keyword);
         const currentValue = /** @type {string} */ (Instance.value(instance));
 
-        const bestMatch = allowedValues
-          .map((value) => ({
-            value,
-            weight: leven(value, currentValue)
-          }))
-          .sort((a, b) => a.weight - b.weight)[0];
-        let message;
-        if (
-          allowedValues.length === 1
-          || (bestMatch && bestMatch.weight < bestMatch.value.length)
-        ) {
-          message = localization.getEnumErrorMessage({
-            variant: "suggestion",
-            instanceValue: currentValue,
-            suggestion: bestMatch.value
-          });
-        } else {
-          message = localization.getEnumErrorMessage({
-            variant: "fallback",
-            instanceValue: currentValue,
-            allowedValues: allowedValues
-          });
-        }
         errors.push({
-          message,
+          message: localization.getEnumErrorMessage({ allowedValues }, currentValue),
           instanceLocation: Instance.uri(instance),
           schemaLocation: schemaLocation
         });

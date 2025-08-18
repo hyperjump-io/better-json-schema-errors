@@ -518,7 +518,7 @@ describe("Error messages", async () => {
     expect(result.errors).to.eql([{
       schemaLocation: "https://example.com/main#/enum",
       instanceLocation: "#",
-      message: localization.getEnumErrorMessage({ variant: "suggestion", instanceValue: "rwd", suggestion: "red" })
+      message: localization.getEnumErrorMessage({ allowedValues: ["red", "green", "blue"] }, "rwd")
     }]);
   });
 
@@ -989,7 +989,7 @@ describe("Error messages", async () => {
     const instance = {
       type: "d",
       banana: "yellow",
-      box: 10
+      box: ""
     };
 
     /** @type OutputFormat */
@@ -1159,6 +1159,171 @@ describe("Error messages", async () => {
         schemaLocation: "https://example.com/main#/$defs/numberSchema/minimum",
         instanceLocation: "#/foo",
         message: localization.getNumberErrorMessage({ minimum: 10 })
+      }
+    ]);
+  });
+
+  test("anyOf with enums provides a 'did you mean' suggestion", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      anyOf: [
+        { enum: ["apple", "orange", "banana"] },
+        { enum: [100, 200, 300] }
+      ]
+    }, schemaUri);
+
+    // The instance is a typo but is clearly intended to be "apple".
+    const instance = "aple";
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/0/enum",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/1/enum",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: "https://example.com/main#/anyOf",
+        instanceLocation: "#",
+        message: localization.getEnumErrorMessage({ allowedValues: ["apple"] }, "aple")
+      }
+    ]);
+  });
+
+  test("anyOf with const", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      anyOf: [
+        { const: "a" },
+        { const: 1 }
+      ]
+    }, schemaUri);
+
+    const instance = 12;
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/0/const",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/1/const",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: "https://example.com/main#/anyOf",
+        instanceLocation: "#",
+        message: localization.getEnumErrorMessage({ allowedValues: ["a", 1] }, 12)
+      }
+    ]);
+  });
+
+  test("anyOf with const and enum", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      anyOf: [
+        { enum: ["a", "b", "c"] },
+        { const: 1 }
+      ]
+    }, schemaUri);
+
+    const instance = 12;
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/0/enum",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/1/const",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: "https://example.com/main#/anyOf",
+        instanceLocation: "#",
+        message: localization.getEnumErrorMessage({ allowedValues: ["a", "b", "c", 1] }, 12)
+      }
+    ]);
+  });
+
+  test("anyOf with enum and type", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      anyOf: [
+        { enum: ["a", "b", "c"] },
+        { type: "number" }
+      ]
+    }, schemaUri);
+
+    const instance = false;
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/0/enum",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/1/type",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: "https://example.com/main#/anyOf",
+        instanceLocation: "#",
+        message: localization.getEnumErrorMessage({ allowedValues: ["a", "b", "c"], allowedTypes: ["number"] }, false)
       }
     ]);
   });
