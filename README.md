@@ -25,6 +25,7 @@ Example:-
       "instanceLocation": "#/name",
       "message": "Expected a string at least 5 characters long."
     }
+  ]
 }
 ```
 
@@ -202,23 +203,23 @@ When an instance matches multiple `anyOf` alternatives type, the library priorit
 **Schema:**
 ```json
 {
-  anyOf: [
+  "anyOf": [
     {
-      type: "object",
-      properties: {
-      name: { type: "string" },
-      age: { type: "number" }
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "age": { "type": "number" }
       },
-      required: ["name", "age"]
+      "required": ["name", "age"]
     },
     {
-      type: "object",
-      properties: {
-      title: { type: "string" },
-      author: { type: "string" },
-      ID: { type: "string", pattern: "^[0-9\\-]+$" }
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "author": { "type": "string" },
+        "ID": { "type": "string", "pattern": "^[0-9\\-]+$" }
       },
-      required: ["title", "author", "ID"]
+      "required": ["title", "author", "ID"]
     }
   ]
 }
@@ -227,10 +228,10 @@ When an instance matches multiple `anyOf` alternatives type, the library priorit
 Invalid Instance:-
 ``` Json
 {
-  title: "Clean Code",
-  author: "Robert Martin",
-  ID: "NotValidId"
-};
+  "title": "Clean Code",
+  "author": "Robert Martin",
+  "ID": "NotValidId"
+}
 ```
 BetterJSONSchemaErrors Output:-
 ``` Json
@@ -239,7 +240,7 @@ BetterJSONSchemaErrors Output:-
     {
       "schemaLocation": "https://example.com/main#/anyOf/1/properties/ID/pattern",
       "instanceLocation": "#/ID",
-      "message": "The instance should match the format: "^[0-9\\-]+$". "
+      "message": "The instance should match the format: \"^[0-9\\-]+$\". "
     }
   ]
 }
