@@ -35,8 +35,6 @@ This module is designed for node.js (ES Modules, TypeScript) and browsers. It
 should work in Bun and Deno as well, but the test runner doesn't work in these
 environments, so this module may be less stable in those environments.
 
-
-
 ## Examples and Basic Usage
 Better JSON Schema Errors works with **any JSON Schema validator** that follows the official [JSON Schema Output Format](https://json-schema.org/draft/2020-12/json-schema-core#name-output-structure).  
 In this example, we’ll showcase it with the [Hyperjump JSON Schema Validator](https://github.com/hyperjump-io/json-schema).  
@@ -116,36 +114,36 @@ We need contributions from different countries to add more languages.
 
 To change the language, pass a language option to the betterJsonSchemaErrors function, like this:  
 
-```
+```js
 const friendlyErrors = await betterJsonSchemaErrors(result, schemaUri, instance, { language: "en-US" });
 ```
 
-### 4. Handling `anyOf` with Clarity
+### 4. Handling `anyOf`/`oneOf` with Clarity
 
-The `anyOf` keyword is a powerful but complex JSON Schema feature. **Better-JSON-Schema-Errors** intelligently simplifies its output by providing clear, consolidated error messages that are easier to debug. 
+The `anyOf`/`oneOf` keyword is a powerful but complex JSON Schema feature. **better-json-schema-errors** intelligently simplifies its output by providing clear, consolidated error messages that are easier to debug. Whenever possible it will try to determine which alternative the user intended and focus the error output to only those errors related to correcting the data for that alternative.
 
 **Schema:**
 ```json
 {
   "anyOf": [
-    { "type": "string" },
+    { "type": "string", "minLength": 5 },
     { "type": "number" }
   ]
 }
 ```
 
 Invalid Instance:-
-``` Json
-false
+```json
+"abc"
 ```
 BetterJSONSchemaErrors Output:-
-``` Json
+```json
 {
   "errors": [
     {
-      "schemaLocation": "https://example.com/main#/anyOf",
+      "schemaLocation": "https://example.com/main#/anyOf/0/minLength",
       "instanceLocation": "#",
-      "message": "The instance should be of type 'string' or 'number' but found 'boolean'."
+      "message": "Expected a string at least 5 characters long."
     }
   ]
 }
@@ -174,7 +172,7 @@ Example:
 This makes typos or near-misses much easier to debug.
 For full details and strategies, see the dedicated [enum documentation](./documentation/enum.md).
 
-### 6. Range constraint keyword
+### 6. Range constraint keywords
 Better JSON Schema Errors consolidates multiple range-related validation errors (`minimum`, `maxLength`, `minItems`, etc.) into a single, clear message.  
 For example, a schema like:
 ```json
@@ -185,11 +183,11 @@ For example, a schema like:
 }
 ```
 Instance:-
-```Json
+```json
 2
 ```
 BetterJSONSchemaErrors Output:-
-``` Json
+```json
 {
   "errors": [
     {
@@ -200,17 +198,20 @@ BetterJSONSchemaErrors Output:-
   ]
 }
 ```
-Instead of 2 error message it manage to give single concise error message. For details, see the dedicated [Range documenetation](./documentation/range-handler.md)
+Instead of 2 error message it manages to give a single concise error message. For details, see the dedicated [Range documenetation](./documentation/range-handler.md)
 
 ### 6. Custom Keywords and Error Handlers
-In order to create the custom keywords and error handlers we need create and register two types of handler: **Normalization Handler** and **Error Handlers**
+In order to create the custom keywords and error handlers we need to create and
+register two types of handlers: **Normalization Handler** and **Error Handlers**.
 
-1. Normalization: This phase takes the raw, often deeply nested, error tree from the validator and converts it into a NormalizedOutput (can check type of normalizedOutput in the index.d.ts file).  
+1. Normalization: This phase takes the raw, often deeply nested, error output
+from the validator and converts it into a NormalizedOutput (you can check type of
+normalizedOutput in the index.d.ts file).
 
-2. Error Handling: This phase takes the normalized data and uses it to generate the final error messages. This is the job of the Error Handlers.  
+2. Error Handling: This phase takes the normalized output and uses it to generate the final error messages. This is the job of the Error Handlers.  
 
 Fist step -: Creating the keywordHandler
-```Js
+```js
 /**
  * @import { KeywordHandler } from "@hyperjump/better-json-schema-errors"
  */
@@ -227,7 +228,7 @@ export default multipleOfTen;
 ```
 
 Second step -: Creating the errorHandler
-```Js
+```js
 import { getSchema } from "@hyperjump/json-schema/experimental";
 import * as Schema from "@hyperjump/browser";
 import * as Instance from "@hyperjump/json-schema/instance/experimental";
@@ -261,11 +262,11 @@ const ErrorHandler = async (normalizedErrors, instance, localization) => {
 
 Step 3:- Register the handlers:
 
-```Js
+```js
 import { setNormalizationHandler, addErrorHandler  } from "@hyperjump/better-json-schema-errors";
-const KEYWORD_URI = "https://example.com/keyword/multipleOfTen";
+const KEYWORD_URI = "https://json-schema.org/keyword/multipleOfTen";
 
-setNormalizationHandler(CUSTOM_KEYWORD_URI, multipleOften);
+setNormalizationHandler(KEYWORD_URI, multipleOften);
 
 addErrorHandler(errorHandler);
 ```

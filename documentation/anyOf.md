@@ -1,6 +1,6 @@
 ##  Handling `anyOf` with Clarity
 
-**Better JSON Schema Errors** intelligently simplifies error output, providing clear, consolidated error messages that are easier to debug.
+`better-json-schema-errors` intelligently simplifies error output, providing clear, consolidated error messages that are easier to debug.
 Here are the differnt cases and how better-json-schema-errors handles them to produces better errors.
 
 ---
@@ -20,11 +20,11 @@ If the instance's type doesn't match any of the alternatives in an `anyOf`, the 
 ```
 
 Invalid Instance:-
-``` Json
+```json
 false
 ```
 BetterJSONSchemaErrors Output:-
-``` Json
+```json
 {
   "errors": [
     {
@@ -51,11 +51,11 @@ If the instance's type matches one of the `anyOf` alternatives but fails a subse
 ```
 
 Invalid Instance:-
-``` Json
+```json
 "abc"
 ```
 BetterJSONSchemaErrors Output:-
-``` Json
+```json
 {
   "errors": [
     {
@@ -98,7 +98,7 @@ When an instance matches multiple `anyOf` alternatives type, the library priorit
 ```
 
 Invalid Instance:-
-``` Json
+```json
 {
   "title": "Clean Code",
   "author": "Robert Martin",
@@ -106,7 +106,7 @@ Invalid Instance:-
 }
 ```
 BetterJSONSchemaErrors Output:-
-``` Json
+```json
 {
   "errors": [
     {
@@ -133,11 +133,11 @@ When an instance fails all enum or const options in an anyOf, the library merges
 ```
 
 Invalid Instance:-
-``` Json
+```json
 2
 ```
 BetterJSONSchemaErrors Output:-
-``` Json
+```json
 {
   "errors": [
     {
@@ -159,21 +159,31 @@ When `anyOf` uses a discriminator, the library leverages it to give precise erro
 ```json
 {
   "anyOf": [
-    { "properties": { "type": { "const": "a" }, "apple": { "type": "string" } } },
-    { "properties": { "type": { "const": "b" }, "banana": { "type": "string" } } }
+    { 
+      "properties": { 
+      "type": { "const": "a" }, 
+      "apple": { "type": "string" } 
+      } 
+    },
+    {
+      "properties": {
+        "type": { "const": "b" },
+        "banana": { "type": "string" }
+      }
+    }
   ]
 }
 ```
 
 Invalid Instance:-
-``` Json
+```json
 {
   "type": "a",
   "apple": 42
 }
 ```
 BetterJSONSchemaErrors Output:-
-``` Json
+```json
 {
   "errors": [
     {
@@ -183,5 +193,4 @@ BetterJSONSchemaErrors Output:-
     }
   ]
 }
-
 ```

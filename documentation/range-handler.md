@@ -1,6 +1,6 @@
 # Range Constraint Keywords
 
-better-json-schema-errros processes validation errors for keywords that define a numeric range or count, such as `minimum`/`maximum`/`exclusiveMinimum`/`exculsiveMaximum` for numbers, `minLength`/`maxLength` for strings, `minItems`/`maxItems` for arrays, and `minProperties`/`maxProperties` for objects.  
+`better-json-schema-errors` processes validation errors for keywords that define a numeric range or count, such as `minimum`/`maximum`/`exclusiveMinimum`/`exculsiveMaximum` for numbers, `minLength`/`maxLength` for strings, `minItems`/`maxItems` for arrays, and `minProperties`/`maxProperties` for objects.  
 The primary goal is to consolidate multiple, separate validation errors related to these constraints into a single, clear, and human-readable message that describes the effective valid range for the instance.
 
 ---
@@ -26,7 +26,7 @@ This handler improves the user experience by implementing a unified consolidatio
 ### Examples
 ### 1. **Number** (`minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`)
 Schema:
-```Json
+```json
 {
   "allOf": [
     { "minimum": 3 },
@@ -35,11 +35,11 @@ Schema:
 }
 ```
 Instance:-
-```Json
+```json
 2
 ```
 BetterJSONSchemaErrors Output:-
-``` Json
+```json
 {
   "errors": [
     {
@@ -54,7 +54,7 @@ BetterJSONSchemaErrors Output:-
 
 ### 2. **String** (`minLength`, `maxLength`)
 Schema:
-```Json
+```json
 {
   "allOf": [
     { "minLength": 3 },
@@ -63,11 +63,11 @@ Schema:
 }
 ```
 Instance:-
-```Json
+```json
 "helo"
 ```
-BetterJSONSchemaErrors Output:-
-``` Json
+`better-json-schema-errors` Output:-
+```json
 {
   "errors": [
     {
@@ -82,7 +82,7 @@ BetterJSONSchemaErrors Output:-
 
 ### 3. **Array** (`minItems`, `maxItems`)
 Schema:
-```Json
+```json
 {
   "allOf": [
     { "minItems": 3 },
@@ -91,11 +91,11 @@ Schema:
 }
 ```
 Instance:-
-```Json
+```json
 [1,2]
 ```
 BetterJSONSchemaErrors Output:-
-``` Json
+```json
 {
   "errors": [
     {
@@ -112,7 +112,7 @@ BetterJSONSchemaErrors Output:-
 ```
 ### 4. **Object** (`minProperties`, `maxProperties`)
 Schema:
-```Json
+```json
 {
   "allOf": [
     { "minProperties": 2 },
@@ -121,11 +121,11 @@ Schema:
 }
 ```
 Instance:-
-```Json
+```json
 {"a": 1}
 ```
 BetterJSONSchemaErrors Output:-
-``` Json
+```json
 {
   "errors": [
     {

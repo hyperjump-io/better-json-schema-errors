@@ -14,17 +14,16 @@ Example Schema:
 **Schema:**
 ```json
 {
-  "type": "string",
   "enum": ["apple", "banana", "orange"]
 }
 ```
 
 Invalid Instance:-
-``` Json
+```json
 { "fruit": "appl" }
 ```
 BetterJSONSchemaErrors Output:-
-``` Json
+```json
 {
   "errros": {
     "message": "Unexpected value 'appl'. Did you mean 'apple'?",
@@ -41,17 +40,16 @@ Example Schema:
 **Schema:**
 ```json
 {
-  "type": "string",
   "enum": ["apple", "banana", "orange"]
 }
 ```
 
 Invalid Instance:-
-``` Json
+```json
 { "fruit": "grape" }
 ```
 BetterJSONSchemaErrors Output:-
-``` Json
+```json
 {
   "errros": {
     "message": "Unexpected value 'grape'. Expected one of: 'apple', 'banana', or 'orange'.",
