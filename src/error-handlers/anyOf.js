@@ -5,7 +5,7 @@ import * as JsonPointer from "@hyperjump/json-pointer";
 import { getErrors } from "../error-handling.js";
 
 /**
- * @import { ErrorHandler, ErrorObject, NormalizedOutput } from "../index.d.ts"
+ * @import { ErrorHandler, ErrorObject, Json, NormalizedOutput } from "../index.d.ts"
  */
 
 /** @type ErrorHandler */

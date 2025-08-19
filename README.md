@@ -122,8 +122,153 @@ const friendlyErrors = await betterJsonSchemaErrors(result, schemaUri, instance,
 
 ### 4. Handling `anyOf` with Clarity
 
-The `anyOf` keyword is a powerful but complex JSON Schema feature. **Better-JSON-Schema-Errors** intelligently simplifies its output by providing clear, consolidated error messages that are easier to debug. For detailed examples, see the dedicated [**anyOf** documentation](./docs/anyOf.md).
+The `anyOf` keyword is a powerful but complex JSON Schema feature. **Better-JSON-Schema-Errors** intelligently simplifies its output by providing clear, consolidated error messages that are easier to debug. 
 
+**Schema:**
+```json
+{
+  "anyOf": [
+    { "type": "string" },
+    { "type": "number" }
+  ]
+}
+```
+
+Invalid Instance:-
+``` Json
+false
+```
+BetterJSONSchemaErrors Output:-
+``` Json
+{
+  "errors": [
+    {
+      "schemaLocation": "https://example.com/main#/anyOf",
+      "instanceLocation": "#",
+      "message": "The instance should be of type 'string' or 'number' but found 'boolean'."
+    }
+  ]
+}
+```
+
+For detailed examples, see the dedicated [**anyOf** documentation](./documentation/anyOf.md).
+
+### 5. Handling `enum` with Suggestions
+
+When data doesn’t match an allowed `enum` value, Better JSON Schema Errors produces clear messages.  
+It can also suggest the closest valid value (using string similarity).
+
+Example:
+
+```json
+{
+  "errors": [
+    {
+      "message": "Unexpected value 'appl'. Did you mean 'apple'?",
+      "instanceLocation": "#/fruit",
+      "schemaLocation": "https://example.com/main#/properties/fruit/enum"
+    }
+  ]
+}
+```
+This makes typos or near-misses much easier to debug.
+For full details and strategies, see the dedicated [enum documentation](./documentation/enum.md).
+
+### 6. Range constraint keyword
+Better JSON Schema Errors consolidates multiple range-related validation errors (`minimum`, `maxLength`, `minItems`, etc.) into a single, clear message.  
+For example, a schema like:
+```json
+{ "allOf": [
+    { "minimum": 3 },
+    { "minimum": 5 }
+  ]
+}
+```
+Instance:-
+```Json
+2
+```
+BetterJSONSchemaErrors Output:-
+``` Json
+{
+  "errors": [
+    {
+      "schemaLocation": "https://example.com/main#/allOf/1/minimum",
+      "instanceLocation": "#",
+      "message": "Expected a number greater than 5."
+    }
+  ]
+}
+```
+Instead of 2 error message it manage to give single concise error message. For details, see the dedicated [Range documenetation](./documentation/range-handler.md)
+
+### 6. Custom Keywords and Error Handlers
+In order to create the custom keywords and error handlers we need create and register two types of handler: **Normalization Handler** and **Error Handlers**
+
+1. Normalization: This phase takes the raw, often deeply nested, error tree from the validator and converts it into a NormalizedOutput (can check type of normalizedOutput in the index.d.ts file).  
+
+2. Error Handling: This phase takes the normalized data and uses it to generate the final error messages. This is the job of the Error Handlers.  
+
+Fist step -: Creating the keywordHandler
+```Js
+/**
+ * @import { KeywordHandler } from "@hyperjump/better-json-schema-errors"
+ */
+
+/** @type KeywordHandler */
+const multipleOfTen = {
+  appliesTo(type) {
+    return type === "number"
+  }
+};
+
+export default multipleOfTen;
+
+```
+
+Second step -: Creating the errorHandler
+```Js
+import { getSchema } from "@hyperjump/json-schema/experimental";
+import * as Schema from "@hyperjump/browser";
+import * as Instance from "@hyperjump/json-schema/instance/experimental";
+
+/**
+ * @import { ErrorHandler, ErrorObject } from "@hyperjump/better-json-schema-errors"
+ */
+
+/** @type ErrorHandler */
+const ErrorHandler = async (normalizedErrors, instance, localization) => {
+  /** @type ErrorObject[] */
+  const errors = [];
+
+  if (normalizedErrors["https://json-schema.org/keyword/multipleOfTen"]) {
+    for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/multipleOfTen"]) {
+      if (!normalizedErrors["https://json-schema.org/keyword/multipleOfTen"][schemaLocation]) {
+        errors.push({
+          message: "Instance must be multiple of 10",
+          instanceLocation: Instance.uri(instance),
+          schemaLocation: schemaLocation
+        });
+      }
+    }
+  }
+
+  return errors;
+};
+
+
+```
+
+Step 3:- Register the handlers:
+
+```Js
+import { setNormalizationHandler, addErrorHandler  } from "@hyperjump/better-json-schema-errors";
+const KEYWORD_URI = "https://example.com/keyword/multipleOfTen";
+
+setNormalizationHandler(CUSTOM_KEYWORD_URI, multipleOften);
+
+addErrorHandler(errorHandler);
+```
 ## API
 
 <https://better-json-schema-errors.hyperjump.io/modules.html>

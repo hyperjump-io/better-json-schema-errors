@@ -117,3 +117,71 @@ BetterJSONSchemaErrors Output:-
   ]
 }
 ```
+
+#### 4. anyOf handling const/enum
+
+When an instance fails all enum or const options in an anyOf, the library merges them into one clear error message, avoiding multiple errors and even suggesting close matches in many cases.
+
+**Schema:**
+```json
+{
+  "anyOf": [
+    { "enum": ["a", "b", "c"] },
+    { "const": 1 }
+  ]
+}
+```
+
+Invalid Instance:-
+``` Json
+2
+```
+BetterJSONSchemaErrors Output:-
+``` Json
+{
+  "errors": [
+    {
+      "schemaLocation": "https://example.com/main#/anyOf",
+      "instanceLocation": "#",
+      "message": "Unexpected value 2. Expected one of: 'a', 'b', 'c' or 1 ."
+    }
+  ]
+}
+
+```
+
+#### 5. anyOf with a Discriminator
+
+When `anyOf` uses a discriminator, the library leverages it to give precise errors, matching the instance to the intended alternative via a specific property (e.g., `"type"`, `"const"`).
+
+
+**Schema:**
+```json
+{
+  "anyOf": [
+    { "properties": { "type": { "const": "a" }, "apple": { "type": "string" } } },
+    { "properties": { "type": { "const": "b" }, "banana": { "type": "string" } } }
+  ]
+}
+```
+
+Invalid Instance:-
+``` Json
+{
+  "type": "a",
+  "apple": 42
+}
+```
+BetterJSONSchemaErrors Output:-
+``` Json
+{
+  "errors": [
+    {
+      "schemaLocation": "https://example.com/main#/anyOf/0/properties/apple/type",
+      "instanceLocation": "#/apple",
+      "message": "The instance should be of type 'string' but found 'number'."
+    }
+  ]
+}
+
+```
