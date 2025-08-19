@@ -10,7 +10,7 @@ npm install @hyperjump/better-json-schema-errors
 ## API Error Message Format
   
 Our API Error Format includes :-
-- **`schemaLocation`**  - A JSON URI that points to the specific keyword(s) within the schema that failed validation. This can be a single string or an array of absolute keyword locations for errors that are grouped together.
+- **`schemaLocation`**  - A URI that points to the specific keyword(s) within the schema that failed validation. This can be a single string or an array of absolute keyword locations for errors that are grouped together.
 
 - **`instanceLocation`**  - JSON Pointer to the invalid piece of input data.  
 
@@ -96,7 +96,7 @@ No matter which output format your validator produces, Better JSON Schema Errors
 Sometimes a single validation issue is tied to **more than one schema keyword**.  
 For example, when both `minimum` and `exclusiveMinimum` apply, or when `minLength` and `maxLength` constraints overlap or when when both `minimum` and `maximum` apply.  
 
-Instead of generating duplicate error messages, It groups these into an **array of schema locations** and produces one concise, human-friendly message :-
+Instead of multiple related error messages, It groups these into an **array of schema locations** and produces one concise, human-friendly message :-
 
 ```json
 {
@@ -110,7 +110,7 @@ Instead of generating duplicate error messages, It groups these into an **array 
 ```
 ### 3. Localization
 
-The library uses [fluent](https://projectfluent.org) `.ftl` files provide localized error messages. By default, only English is supported.
+The library uses [fluent](https://projectfluent.org) `.ftl` files to provide localized error messages. By default, only English is supported.
 
 We need contributions from different countries to add more languages.
 

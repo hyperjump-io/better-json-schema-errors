@@ -1,7 +1,7 @@
 node_modules/
 
 
-
+/docs
 scratch/
 TODO*
 .DS_Store
