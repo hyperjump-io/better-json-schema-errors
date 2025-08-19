@@ -165,10 +165,6 @@ const anyOfErrorHandler = async (normalizedErrors, instance, localization) => {
         continue;
       }
 
-      // TODO: Handle alternatives with const
-      // TODO: Handle alternatives with enum
-      // TODO: Handle null alternatives
-      // TODO: Handle boolean alternatives
       // TODO: Handle string alternatives
       // TODO: Handle array alternatives
       // TODO: Handle alternatives without a type

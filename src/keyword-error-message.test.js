@@ -856,7 +856,7 @@ describe("Error messages", async () => {
       {
         schemaLocation: "https://example.com/main#/anyOf",
         instanceLocation: "#",
-        message: localization.getTypeErrorMessage(["string", "number"], "boolean")
+        message: localization.getEnumErrorMessage({ allowedTypes: ["string", "number"] }, false)
       }
     ]);
   });

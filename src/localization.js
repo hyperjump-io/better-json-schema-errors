@@ -239,12 +239,23 @@ export class Localization {
    * @returns {string}
    */
   getEnumErrorMessage(constraints, currentValue) {
-    if (constraints.allowedValues) {
+    /** @type {"suggestion" | "types" | "values" | "both"} */
+    let variant = "suggestion";
+
+    /** @type string */
+    let allowedValues = "";
+
+    /** @type string */
+    let expectedTypes = "";
+
+    const instanceValue = JSON.stringify(currentValue);
+
+    if (constraints.allowedValues && constraints.allowedValues.length > 0 && constraints.allowedTypes?.length === 0) {
       const bestMatch = constraints.allowedValues
         .map((value) => {
           const r = {
             value: JSON.stringify(value),
-            weight: leven(JSON.stringify(value), JSON.stringify(currentValue))
+            weight: leven(JSON.stringify(value), instanceValue)
           };
           return r;
         })
@@ -254,19 +265,27 @@ export class Localization {
         return this._formatMessage("enum-error", {
           variant: "suggestion",
           suggestion: bestMatch.value,
-          instanceValue: JSON.stringify(currentValue)
-        });
-      } else {
-        return this._formatMessage("enum-error", {
-          variant: "fallback",
-          allowedValues: new Intl.ListFormat(this.locale, { type: "disjunction" })
-            .format(constraints.allowedValues.map((value) => JSON.stringify(value))),
-          instanceValue: JSON.stringify(currentValue)
+          instanceValue
         });
       }
+
+      variant = "values";
+      allowedValues = new Intl.ListFormat(this.locale, { type: "disjunction" })
+        .format(constraints.allowedValues.map((value) => JSON.stringify(value)));
     }
 
-    return "";
+    if (constraints.allowedTypes && constraints.allowedTypes.length > 0) {
+      variant = variant === "values" ? "both" : "types";
+      expectedTypes = new Intl.ListFormat(this.locale, { type: "disjunction" })
+        .format(constraints.allowedTypes.map((value) => JSON.stringify(value)));
+    }
+
+    return this._formatMessage("enum-error", {
+      variant,
+      allowedValues,
+      expectedTypes,
+      instanceValue
+    });
   }
 
   /** @type () => string */

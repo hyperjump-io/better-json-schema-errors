@@ -1,9 +1,11 @@
 # Non-type specific messages
 type-error = The instance should be of type {$expected} but found {$actual}.
 const-error = The instance should be equal to {$expectedValue}.
-enum-error = { $variant ->
-	[suggestion] Unexpected value {$instanceValue}. Did you mean {$suggestion}?
-	*[fallback] Unexpected value {$instanceValue}. Expected one of: {$allowedValues}.
+enum-error = Unexpected value {$instanceValue}. { $variant ->
+  [types] Expected a {$expectedTypes}.
+  [values] Expected one of: ${allowedValues}.
+  [both] Expected a type of {$expectedTypes}, or one of: ${allowedValues}.
+	[suggestion] Did you mean {$suggestion}?
 }
 
 # String messages
