@@ -5,7 +5,7 @@ enum-error = Unexpected value {$instanceValue}. { $variant ->
   [types] Expected a {$expectedTypes}.
   [values] Expected one of: ${allowedValues}.
   [both] Expected a type of {$expectedTypes}, or one of: ${allowedValues}.
-	[suggestion] Did you mean {$suggestion}?
+  [suggestion] Did you mean {$suggestion}?
 }
 
 # String messages

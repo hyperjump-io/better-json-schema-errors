@@ -106,13 +106,14 @@ const anyOfErrorHandler = async (normalizedErrors, instance, localization) => {
               alternativeProperties.add(location);
             }
           }
+
           return alternativeProperties;
         });
 
         const discriminator = definedProperties.reduce((acc, properties) => {
           return acc.intersection(properties);
         }, definedProperties[0]);
-        const discriminatedAlternatives = allAlternatives.filter((alternative) => {
+        const discriminatedAlternatives = alternatives.filter((alternative) => {
           for (const instanceLocation in alternative) {
             if (!discriminator.has(instanceLocation)) {
               continue;
@@ -143,11 +144,10 @@ const anyOfErrorHandler = async (normalizedErrors, instance, localization) => {
         // Discriminator identified, but none of the alternatives match
         if (discriminatedAlternatives.length === 0) {
           // TODO: How do we handle this case?
-          // errors.push(...await getErrors(allAlternatives[0], instance, localization));
         }
 
         // Last resort, select the alternative with the most properties matching the instance
-        // TODO: We shouldn't use this strategy if alternatives have the same number of matching instances "UPDATED"
+        // TODO: We shouldn't use this strategy if alternatives have the same number of matching instances
         const instanceProperties = new Set(Instance.values(instance)
           .map((node) => Instance.uri(node)));
         let maxMatches = -1;
