@@ -1,8 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { FluentBundle, FluentResource } from "@fluent/bundle";
+import leven from "leven";
 
 /**
  * @import { FluentVariable} from "@fluent/bundle"
+ * @import { Json } from "./index.d.ts"
  */
 
 /**
@@ -40,6 +42,13 @@ import { FluentBundle, FluentResource } from "@fluent/bundle";
  *   maxProperties?: number;
  *   minProperties?: number;
  * }} PropertiesConstraints
+ */
+
+/**
+ * @typedef {{
+ *   allowedValues?: Json[],
+ *   allowedTypes?: string[]
+ * }} ValueConstraints
  */
 
 export class Localization {
@@ -225,39 +234,58 @@ export class Localization {
   }
 
   /**
-   * @typedef {Object} EnumSuggestionArgs
-   * @property {"suggestion"} variant
-   * @property {string} instanceValue
-   * @property {string} suggestion
-   */
-
-  /**
-   * @typedef {Object} EnumFallbackArgs
-   * @property {"fallback"} variant
-   * @property {string} instanceValue
-   * @property {string[]} allowedValues
-   */
-
-  /**
-   * @param {EnumSuggestionArgs | EnumFallbackArgs} args
+   * @param {ValueConstraints} constraints
+   * @param {Json} currentValue
    * @returns {string}
    */
-  getEnumErrorMessage(args) {
-    const formattedArgs = {
-      variant: args.variant,
-      instanceValue: `"${args.instanceValue}"`,
-      suggestion: "",
-      allowedValues: ""
-    };
+  getEnumErrorMessage(constraints, currentValue) {
+    /** @type {"suggestion" | "types" | "values" | "both"} */
+    let variant = "suggestion";
 
-    if (args.variant === "fallback") {
-      const quotedValues = args.allowedValues.map((value) => JSON.stringify(value));
-      formattedArgs.allowedValues = new Intl.ListFormat(this.locale, { type: "disjunction" }).format(quotedValues);
-    } else {
-      formattedArgs.suggestion = args.suggestion;
+    /** @type string */
+    let allowedValues = "";
+
+    /** @type string */
+    let expectedTypes = "";
+
+    const instanceValue = JSON.stringify(currentValue);
+
+    if (constraints.allowedValues && constraints.allowedValues.length > 0 && constraints.allowedTypes?.length === 0) {
+      const bestMatch = constraints.allowedValues
+        .map((value) => {
+          const r = {
+            value: JSON.stringify(value),
+            weight: leven(JSON.stringify(value), instanceValue)
+          };
+          return r;
+        })
+        .sort((a, b) => a.weight - b.weight)[0];
+
+      if (constraints.allowedValues.length === 1 || (bestMatch && bestMatch.weight < bestMatch.value.length)) {
+        return this._formatMessage("enum-error", {
+          variant: "suggestion",
+          suggestion: bestMatch.value,
+          instanceValue
+        });
+      }
+
+      variant = "values";
+      allowedValues = new Intl.ListFormat(this.locale, { type: "disjunction" })
+        .format(constraints.allowedValues.map((value) => JSON.stringify(value)));
     }
 
-    return this._formatMessage("enum-error", formattedArgs);
+    if (constraints.allowedTypes && constraints.allowedTypes.length > 0) {
+      variant = variant === "values" ? "both" : "types";
+      expectedTypes = new Intl.ListFormat(this.locale, { type: "disjunction" })
+        .format(constraints.allowedTypes.map((value) => JSON.stringify(value)));
+    }
+
+    return this._formatMessage("enum-error", {
+      variant,
+      allowedValues,
+      expectedTypes,
+      instanceValue
+    });
   }
 
   /** @type () => string */
