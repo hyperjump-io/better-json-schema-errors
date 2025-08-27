@@ -13,6 +13,7 @@ import leven from "leven";
  *   exclusiveMinimum?: boolean;
  *   maximum?: number;
  *   exclusiveMaximum?: boolean;
+ *   multipleOf?: number;
  * }} NumberConstraints
  */
 
@@ -20,6 +21,7 @@ import leven from "leven";
  * @typedef {{
  *   minLength?: number;
  *   maxLength?: number;
+ *   pattern? : string;
  * }} StringConstraints
  */
 
@@ -239,8 +241,8 @@ export class Localization {
    * @returns {string}
    */
   getEnumErrorMessage(constraints, currentValue) {
-    /** @type {"suggestion" | "types" | "values" | "both"} */
-    let variant = "suggestion";
+    /** @type {"types" | "values" | "both"} */
+    let variant = "both";
 
     /** @type string */
     let allowedValues = "";
@@ -250,7 +252,7 @@ export class Localization {
 
     const instanceValue = JSON.stringify(currentValue);
 
-    if (constraints.allowedValues && constraints.allowedValues.length > 0 && constraints.allowedTypes?.length === 0) {
+    if (constraints.allowedValues && constraints.allowedValues.length > 0 && !constraints.allowedTypes?.length) {
       const bestMatch = constraints.allowedValues
         .map((value) => {
           const r = {
@@ -262,8 +264,7 @@ export class Localization {
         .sort((a, b) => a.weight - b.weight)[0];
 
       if (constraints.allowedValues.length === 1 || (bestMatch && bestMatch.weight < bestMatch.value.length)) {
-        return this._formatMessage("enum-error", {
-          variant: "suggestion",
+        return this._formatMessage("enum-error-suggestion", {
           suggestion: bestMatch.value,
           instanceValue
         });
@@ -279,8 +280,7 @@ export class Localization {
       expectedTypes = new Intl.ListFormat(this.locale, { type: "disjunction" })
         .format(constraints.allowedTypes.map((value) => JSON.stringify(value)));
     }
-
-    return this._formatMessage("enum-error", {
+    return this._formatMessage("enum-error-types-values", {
       variant,
       allowedValues,
       expectedTypes,
@@ -288,8 +288,114 @@ export class Localization {
     });
   }
 
+  /** @type (descriptions: string[]) => string */
+  getAnyOfBulletsErrorMessage(descriptions) {
+    const constraints = "\n - " + descriptions.join("\n - ");
+    return this._formatMessage("anyOf-error-bullets", { constraints });
+  }
+
   /** @type () => string */
   getAnyOfErrorMessage() {
     return this._formatMessage("anyOf-error");
+  }
+
+  getNullDescription() {
+    return this._formatMessage("null-description");
+  }
+
+  getBooleanDescription() {
+    return this._formatMessage("boolean-description");
+  }
+
+  /** @type (constraints: NumberConstraints) => string */
+  getNumberDescription(constraints) {
+    /** @type string[] */
+    const messages = [];
+
+    if (constraints.minimum !== undefined) {
+      if (constraints.exclusiveMinimum) {
+        messages.push(this._formatMessage("number-error-exclusive-minimum", constraints));
+      } else {
+        messages.push(this._formatMessage("number-error-minimum", constraints));
+      }
+    }
+
+    if (constraints.maximum !== undefined) {
+      if (constraints.exclusiveMaximum) {
+        messages.push(this._formatMessage("number-error-exclusive-maximum", constraints));
+      } else {
+        messages.push(this._formatMessage("number-error-maximum", constraints));
+      }
+    }
+
+    if (constraints.multipleOf) {
+      messages.push(this._formatMessage("number-error-multiple-of", constraints));
+    }
+
+    return this._formatMessage("number-description", {
+      constraints: new Intl.ListFormat(this.locale).format(messages)
+    });
+  }
+
+  /** @type (constraints: StringConstraints) => string */
+  getStringDescription(constraints) {
+    /** @type string[] */
+    const messages = [];
+
+    if (constraints.minLength) {
+      messages.push(this._formatMessage("string-error-minLength", constraints));
+    }
+
+    if (constraints.maxLength) {
+      messages.push(this._formatMessage("string-error-maxLength", constraints));
+    }
+
+    if (constraints.pattern) {
+      messages.push(this._formatMessage("string-error-pattern", constraints));
+    }
+
+    return this._formatMessage("string-description", {
+      constraints: new Intl.ListFormat(this.locale).format(messages)
+    });
+  }
+
+  /** @type (constraints: ArrayConstraints) => string */
+  getArrayDescription(constraints) {
+    /** @type string[] */
+    const messages = [];
+
+    if (constraints.minItems !== undefined) {
+      messages.push(this._formatMessage("array-error-min", constraints));
+    }
+
+    if (constraints.maxItems !== undefined) {
+      messages.push(this._formatMessage("array-error-max", constraints));
+    }
+
+    return this._formatMessage("array-description", {
+      constraints: new Intl.ListFormat(this.locale).format(messages)
+    });
+  }
+
+  /** @type (constraints: PropertiesConstraints) => string */
+  getObjectDescription(constraints) {
+    /** @type string[] */
+    const messages = [];
+
+    if (constraints.minProperties) {
+      messages.push(this._formatMessage("properties-error-min", constraints));
+    }
+
+    if (constraints.maxProperties) {
+      messages.push(this._formatMessage("properties-error-max", constraints));
+    }
+
+    return this._formatMessage("object-description", {
+      constraints: new Intl.ListFormat(this.locale).format(messages)
+    });
+  }
+
+  getConflictingTypeMessage() {
+    return this._formatMessage("conflicting-message");
   }
 }
