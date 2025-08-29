@@ -200,7 +200,7 @@ BetterJSONSchemaErrors Output:-
 ```
 Instead of 2 error message it manages to give a single concise error message. For details, see the dedicated [Range documenetation](./documentation/range-handler.md)
 
-### 6. Custom Keywords and Error Handlers
+### 7. Custom Keywords and Error Handlers
 In order to create the custom keywords and error handlers we need to create and
 register two types of handlers: **Normalization Handler** and **Error Handlers**.
 

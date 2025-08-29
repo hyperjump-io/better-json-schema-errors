@@ -2,6 +2,7 @@ import { afterEach, describe, test, expect } from "vitest";
 import { betterJsonSchemaErrors } from "./index.js";
 import { registerSchema } from "@hyperjump/json-schema/draft-2020-12";
 import { unregisterSchema } from "@hyperjump/json-schema";
+import { getSchemaDescription } from "./schema-descriptions.js";
 import { Localization } from "./localization.js";
 
 /**
@@ -1324,6 +1325,419 @@ describe("Error messages", async () => {
         schemaLocation: "https://example.com/main#/anyOf",
         instanceLocation: "#",
         message: localization.getEnumErrorMessage({ allowedValues: ["a", "b", "c"], allowedTypes: ["number"] }, false)
+      }
+    ]);
+  });
+
+  test("anyOf with type arrays", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      anyOf: [
+        { type: ["string", "number"] },
+        { type: "boolean" }
+      ]
+    }, schemaUri);
+
+    const instance = null;
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/0/type",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/1/type",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: "https://example.com/main#/anyOf",
+        instanceLocation: "#",
+        message: localization.getEnumErrorMessage({ allowedTypes: ["string", "number", "boolean"] }, null)
+      }
+    ]);
+  });
+
+  test("anyOf with string alternatives", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      type: "string",
+      anyOf: [
+        { minLength: 5 },
+        { maxLength: 2 },
+        { pattern: "^[a-z]*$" }
+      ]
+    }, schemaUri);
+
+    const instance = "AAA";
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/0/minLength",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/1/maxLength",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/2/pattern",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: "https://example.com/main#/anyOf",
+        instanceLocation: "#",
+        message: localization.getAnyOfBulletsErrorMessage([
+          /** @type string */ (await getSchemaDescription({
+            ["https://json-schema.org/keyword/type"]: {
+              ["https://example.com/main#/type"]: true
+            }
+          },
+          {
+            ["https://json-schema.org/keyword/minLength"]: {
+              ["https://example.com/main#/anyOf/0/minLength"]: false
+            }
+          }, localization)),
+          /** @type string */ (await getSchemaDescription({
+            ["https://json-schema.org/keyword/type"]: {
+              ["https://example.com/main#/type"]: true
+            }
+          },
+          {
+            ["https://json-schema.org/keyword/maxLength"]: {
+              ["https://example.com/main#/anyOf/1/maxLength"]: false
+            }
+          }, localization)),
+          /** @type string */ (await getSchemaDescription({
+            ["https://json-schema.org/keyword/type"]: {
+              ["https://example.com/main#/type"]: true
+            }
+          },
+          {
+            ["https://json-schema.org/keyword/pattern"]: {
+              ["https://example.com/main#/anyOf/2/pattern"]: false
+            }
+          }, localization))
+        ])
+      }
+    ]);
+  });
+
+  test("anyOf with number alternatives", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      type: "number",
+      anyOf: [
+        { minimum: 5 },
+        { maximum: 2 },
+        { multipleOf: 2 }
+      ]
+    }, schemaUri);
+
+    const instance = 3;
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/0/minimum",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/1/maximum",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/2/multipleOf",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: "https://example.com/main#/anyOf",
+        instanceLocation: "#",
+        message: localization.getAnyOfBulletsErrorMessage([
+          /** @type string */ (await getSchemaDescription({
+            ["https://json-schema.org/keyword/type"]: {
+              ["https://example.com/main#/type"]: true
+            }
+          },
+          {
+            ["https://json-schema.org/keyword/minimum"]: {
+              ["https://example.com/main#/anyOf/0/minimum"]: false
+            }
+          }, localization)),
+          /** @type string */ (await getSchemaDescription({
+            ["https://json-schema.org/keyword/type"]: {
+              ["https://example.com/main#/type"]: true
+            }
+          },
+          {
+            ["https://json-schema.org/keyword/maximum"]: {
+              ["https://example.com/main#/anyOf/1/maximum"]: false
+            }
+          }, localization)),
+          /** @type string */ (await getSchemaDescription({
+            ["https://json-schema.org/keyword/type"]: {
+              ["https://example.com/main#/type"]: true
+            }
+          },
+          {
+            ["https://json-schema.org/keyword/multipleOf"]: {
+              ["https://example.com/main#/anyOf/2/multipleOf"]: false
+            }
+          }, localization))
+        ])
+      }
+    ]);
+  });
+
+  test("anyOf with object alternatives)", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      type: "object",
+      anyOf: [
+        { minProperties: 3 },
+        { maxProperties: 1 }
+      ]
+    }, schemaUri);
+
+    const instance = { a: 1, b: 2 };
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/0/minProperties",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/1/maxProperties",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf",
+          instanceLocation: "#"
+        }
+      ]
+    };
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: "https://example.com/main#/anyOf",
+        instanceLocation: "#",
+        message: localization.getAnyOfBulletsErrorMessage([
+          /** @type string */ (await getSchemaDescription({
+            ["https://json-schema.org/keyword/type"]: {
+              ["https://example.com/main#/type"]: true
+            }
+          },
+          {
+            ["https://json-schema.org/keyword/minProperties"]: {
+              ["https://example.com/main#/anyOf/0/minProperties"]: false
+            }
+          }, localization)),
+          /** @type string */ (await getSchemaDescription({
+            ["https://json-schema.org/keyword/type"]: {
+              ["https://example.com/main#/type"]: true
+            }
+          },
+          {
+            ["https://json-schema.org/keyword/maxProperties"]: {
+              ["https://example.com/main#/anyOf/1/maxProperties"]: false
+            }
+          }, localization))
+        ])
+      }
+    ]);
+  });
+
+  test("anyOf array alternatives", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      type: "array",
+      anyOf: [
+        { minItems: 3 },
+        { maxItems: 1 }
+      ]
+    }, schemaUri);
+
+    const instance = [1, 2];
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/0/minItems",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/1/maxItems",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: "https://example.com/main#/anyOf",
+        instanceLocation: "#",
+        message: localization.getAnyOfBulletsErrorMessage([
+          /** @type string */ (await getSchemaDescription(
+            {
+              ["https://json-schema.org/keyword/type"]: {
+                ["https://example.com/main#/type"]: true
+              }
+            },
+            {
+              ["https://json-schema.org/keyword/minItems"]: {
+                ["https://example.com/main#/anyOf/0/minItems"]: false
+              }
+            },
+            localization
+          )),
+          /** @type string */ (await getSchemaDescription(
+            {
+              ["https://json-schema.org/keyword/type"]: {
+                ["https://example.com/main#/type"]: true
+              }
+            },
+            {
+              ["https://json-schema.org/keyword/maxItems"]: {
+                ["https://example.com/main#/anyOf/1/maxItems"]: false
+              }
+            },
+            localization
+          ))
+        ])
+      }
+    ]);
+  });
+
+  test("conflicting type error", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      anyOf: [
+        {
+          allOf: [
+            { type: "string" },
+            { type: "boolean" }
+          ]
+        },
+        { type: "null" }
+      ]
+    }, schemaUri);
+
+    const instance = "aaa";
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/0/allOf/0/type",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/0/allOf/1/type",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/1/type",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: "https://example.com/main#/anyOf",
+        instanceLocation: "#",
+        message: localization.getEnumErrorMessage({ allowedTypes: ["null"] }, "aaa")
+      }
+    ]);
+  });
+
+  test.skip("allOf conflicting type", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      allOf: [
+        { type: "string" },
+        { type: "boolean" }
+      ]
+    }, schemaUri);
+
+    const instance = "aaa";
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/allOf/0/type",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/allOf/1/type",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: "https://example.com/main#/allOf/0/type",
+        instanceLocation: "#",
+        message: localization.getConflictingTypeMessage()
       }
     ]);
   });
