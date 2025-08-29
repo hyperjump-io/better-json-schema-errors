@@ -45,7 +45,7 @@ const anyOfErrorHandler = async (normalizedErrors, instance, localization) => {
       // No alternative matched the type/enum/const of the instance.
       if (alternatives.length === 0) {
         /** @type Set<string> */
-        const expectedTypes = new Set();
+        let expectedTypes = new Set();
 
         /** @type Set<Json> */
         const expectedEnums = new Set();
@@ -55,13 +55,19 @@ const anyOfErrorHandler = async (normalizedErrors, instance, localization) => {
             if (instanceLocation === Instance.uri(instance)) {
               let alternativeTypes = new Set(["null", "boolean", "number", "string", "array", "object"]);
               for (const schemaLocation in alternative[instanceLocation]["https://json-schema.org/keyword/type"]) {
-                // TODO: Support type arrays
                 const keyword = await getSchema(schemaLocation);
-                const expectedType = /** @type string */ (Schema.value(keyword));
-                alternativeTypes = alternativeTypes.intersection(new Set(([expectedType])));
+                if (Schema.typeOf(keyword) === "array") {
+                  const expectedTypes = /** @type string[] */ (Schema.value(keyword));
+                  alternativeTypes = alternativeTypes.intersection(new Set(expectedTypes));
+                } else {
+                  const expectedType = /** @type string */ (Schema.value(keyword));
+                  alternativeTypes = alternativeTypes.intersection(new Set([expectedType]));
+                }
               }
-              if (alternativeTypes.size === 1) {
-                expectedTypes.add([...alternativeTypes][0]);
+
+              // The are 6 types. If all types are allowed, don't use expectedTypes
+              if (alternativeTypes.size !== 6) {
+                expectedTypes = expectedTypes.union(alternativeTypes);
               }
 
               for (const schemaLocation in alternative[instanceLocation]["https://json-schema.org/keyword/enum"]) {
@@ -79,7 +85,6 @@ const anyOfErrorHandler = async (normalizedErrors, instance, localization) => {
             }
           }
         }
-
         errors.push({
           message: localization.getEnumErrorMessage({
             allowedValues: [...expectedEnums],

@@ -1329,6 +1329,47 @@ describe("Error messages", async () => {
     ]);
   });
 
+  test("anyOf with type arrays", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      anyOf: [
+        { type: ["string", "number"] },
+        { type: "boolean" }
+      ]
+    }, schemaUri);
+
+    const instance = null;
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/0/type",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf/1/type",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/anyOf",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: "https://example.com/main#/anyOf",
+        instanceLocation: "#",
+        message: localization.getEnumErrorMessage({ allowedTypes: ["string", "number", "boolean"] }, null)
+      }
+    ]);
+  });
+
   test("anyOf with string alternatives", async () => {
     registerSchema({
       $schema: "https://json-schema.org/draft/2020-12/schema",
