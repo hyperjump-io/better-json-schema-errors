@@ -19,7 +19,7 @@ number-description = a number {$constraints}
 string-description = a string {$constraints}.
 array-description = an array {$constraints}
 tuple-description = a tuple with {$numItems} items.
-object-description = a object {$constraints}
+object-description = an object {$constraints}
 
 # String messages
 string-error = Expected a string {$constraints}.

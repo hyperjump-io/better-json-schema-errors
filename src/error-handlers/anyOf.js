@@ -146,8 +146,9 @@ const anyOfErrorHandler = async (normalizedErrors, instance, localization) => {
           }
           // Discriminator identified, but none of the alternatives match
           if (discriminatedAlternatives.length === 0) {
-            // TODO: How do we handle this case?
+            // TODO: For now, it will use the schema description strategy
           }
+
           // Last resort, select the alternative with the most properties matching the instance
           const instanceProperties = new Set(Instance.values(instance).map((node) => Instance.uri(node)));
           let maxMatches = -1;
@@ -165,8 +166,6 @@ const anyOfErrorHandler = async (normalizedErrors, instance, localization) => {
         }
       }
 
-      // TODO: Handle number alternatives
-      // TODO: Handle array alternatives
       // TODO: Handle alternatives without a type
 
       /** @type string[] */
