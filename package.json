@@ -42,6 +42,6 @@
     "@hyperjump/json-pointer": "^1.1.1",
     "@hyperjump/json-schema": "^1.16.0",
     "@hyperjump/pact": "^1.4.0",
-    "leven": "^4.0.0"
+    "leven": "^4.1.0"
   }
 }
