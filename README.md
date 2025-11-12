@@ -1,11 +1,19 @@
 # Hyperjump - Better JSON Schema Errors 
 It transforms standard, machine-oriented validation output into clear, human-friendly error messages ideal for API responses and developer tools. Built upon the official JSON Schema Output Format introduced in draft 2019-09, it ensures seamless compatibility with any compliant validator.
 
-### Node.js
 
-```bash
-npm install @hyperjump/better-json-schema-errors
-```
+> **Note:** This package is not yet published to npm. You can clone this repository locally to experiment with it:
+> ```bash
+> git clone https://github.com/hyperjump-io/better-json-schema-errors.git
+> ```
+> ```bash
+> cd better-json-schema-errors
+> ```
+> ```bash
+> npm install
+> ```
+> This project is currently a **work in progress** and will be published to npm once completed.
+
 
 ## API Error Message Format
   
