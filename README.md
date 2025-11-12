@@ -3,15 +3,6 @@ It transforms standard, machine-oriented validation output into clear, human-fri
 
 
 > **Note:** This package is not yet published to npm. You can clone this repository locally to experiment with it:
-> ```bash
-> git clone https://github.com/hyperjump-io/better-json-schema-errors.git
-> ```
-> ```bash
-> cd better-json-schema-errors
-> ```
-> ```bash
-> npm install
-> ```
 > This project is currently a **work in progress** and will be published to npm once completed.
 
 
