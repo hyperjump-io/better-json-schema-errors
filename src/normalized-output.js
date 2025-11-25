@@ -22,13 +22,8 @@ export const setNormalizationHandler = (uri, handler) => {
 export const evaluateSchema = (schemaLocation, instance, context) => {
   const instanceLocation = Instance.uri(instance);
 
-  let valid = true;
   /** @type API.NormalizedOutput */
   const output = { [instanceLocation]: {} };
-
-  for (const plugin of context.plugins) {
-    plugin.beforeSchema?.(schemaLocation, instance, context);
-  }
 
   const schemaNode = context.ast[schemaLocation];
   if (typeof schemaNode === "boolean") {
@@ -44,18 +39,11 @@ export const evaluateSchema = (schemaLocation, instance, context) => {
 
       const keywordContext = {
         ast: context.ast,
-        errorIndex: context.errorIndex,
-        plugins: context.plugins
+        errorIndex: context.errorIndex
       };
-      for (const plugin of context.plugins) {
-        plugin.beforeKeyword?.(node, instance, keywordContext, context, keyword);
-      }
 
       const keywordOutput = keyword.evaluate?.(keywordValue, instance, keywordContext);
       const isKeywordValid = !context.errorIndex[keywordLocation]?.[instanceLocation];
-      if (!isKeywordValid) {
-        valid = false;
-      }
 
       if (keyword.simpleApplicator) {
         for (const suboutput of (keywordOutput ?? [])) {
@@ -68,15 +56,7 @@ export const evaluateSchema = (schemaLocation, instance, context) => {
         output[instanceLocation][keywordUri] ??= {};
         output[instanceLocation][keywordUri][keywordLocation] = isKeywordValid;
       }
-
-      for (const plugin of context.plugins) {
-        plugin.afterKeyword?.(node, instance, keywordContext, isKeywordValid, context, keyword);
-      }
     }
-  }
-
-  for (const plugin of context.plugins) {
-    plugin.afterSchema?.(schemaLocation, instance, context, valid);
   }
 
   return output;
@@ -142,6 +122,6 @@ export async function normalizedErrorOuput(instance, errorOutput, subjectUri) {
   const { schemaUri, ast } = await compile(schema);
   const value = Instance.fromJs(instance);
   /** @type API.EvaluationContext */
-  const context = { ast, errorIndex, plugins: [] };
+  const context = { ast, errorIndex };
   return evaluateSchema(schemaUri, value, context);
 }

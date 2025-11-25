@@ -1,4 +1,4 @@
-import { AST, EvaluationPlugin } from "@hyperjump/json-schema/experimental";
+import { AST } from "@hyperjump/json-schema/experimental";
 import { JsonNode } from "@hyperjump/json-schema/instance/experimental";
 import { Localization } from "./localization.js";
 
@@ -63,7 +63,6 @@ export type KeywordHandler = {
 export type EvaluationContext = {
   ast: AST;
   errorIndex: ErrorIndex;
-  plugins: EvaluationPlugin[];
 };
 
 export type ErrorIndex = {
