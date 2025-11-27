@@ -4,6 +4,10 @@ import { registerSchema } from "@hyperjump/json-schema/draft-2020-12";
 import { unregisterSchema } from "@hyperjump/json-schema";
 import { getSchemaDescription } from "./schema-descriptions.js";
 import { Localization } from "./localization.js";
+import "@hyperjump/json-schema/draft-04";
+import "@hyperjump/json-schema/draft-06";
+import "@hyperjump/json-schema/draft-2019-09";
+import "@hyperjump/json-schema/draft-07";
 
 /**
  * @import { OutputFormat} from "./index.d.ts"
@@ -639,7 +643,7 @@ describe("Error messages", async () => {
     }]);
   });
 
-  test("format: email", async () => {
+  test("format: email (draft-2020-12)", async () => {
     registerSchema({
       $schema: "https://json-schema.org/draft/2020-12/schema",
       format: "email"
@@ -665,6 +669,117 @@ describe("Error messages", async () => {
       }
     ]);
   });
+
+  test("format: email (draft-2019-09)", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2019-09/schema",
+      format: "email"
+    }, schemaUri);
+
+    const instance = "not-an-email";
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/format",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+    expect(result.errors).to.eql([
+      {
+        schemaLocation: "https://example.com/main#/format",
+        instanceLocation: "#",
+        message: localization.getFormatErrorMessage("email")
+      }
+    ]);
+  });
+
+  test("format: email (draft-07)", async () => {
+  registerSchema({
+    $schema: "http://json-schema.org/draft-07/schema",
+    format: "email"
+  }, schemaUri);
+
+  const instance = "not-an-email";
+  const output = {
+    valid: false,
+    errors: [
+      {
+        absoluteKeywordLocation: "https://example.com/main#/format",
+        instanceLocation: "#"
+      }
+    ]
+  };
+
+  const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+  expect(result.errors).to.eql([
+    {
+      schemaLocation: "https://example.com/main#/format",
+      instanceLocation: "#",
+      message: localization.getFormatErrorMessage("email")
+    }
+  ]);
+});
+
+test("format: email (draft-06)", async () => {
+  registerSchema({
+    $schema: "http://json-schema.org/draft-06/schema",
+    format: "email"
+  }, schemaUri);
+
+  const instance = "not-an-email";
+  const output = {
+    valid: false,
+    errors: [
+      {
+        absoluteKeywordLocation: "https://example.com/main#/format",
+        instanceLocation: "#"
+      }
+    ]
+  };
+
+  const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+
+  expect(result.errors).to.eql([
+    {
+      schemaLocation: "https://example.com/main#/format",
+      instanceLocation: "#",
+      message: localization.getFormatErrorMessage("email")
+    }
+  ]);
+});
+
+test("format: email (draft-04)", async () => {
+
+  registerSchema({
+    $schema: "http://json-schema.org/draft-04/schema",
+    format: "email"
+  }, schemaUri);
+
+  const instance = "not-an-email";
+  const output = {
+    valid: false,
+    errors: [
+      {
+        absoluteKeywordLocation: "https://example.com/main#/format",
+        instanceLocation: "#"
+      }
+    ]
+  };
+
+  const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+
+  expect(result.errors).to.eql([
+    {
+      schemaLocation: "https://example.com/main#/format",
+      instanceLocation: "#",
+      message: localization.getFormatErrorMessage("email")
+    }
+  ]);
+});
 
   test("pattern", async () => {
     registerSchema({

@@ -11,16 +11,32 @@ const format = async (normalizedErrors, instance, localization) => {
   /** @type ErrorObject[] */
   const errors = [];
 
-  if (normalizedErrors["https://json-schema.org/keyword/format"]) {
-    for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/format"]) {
-      if (!normalizedErrors["https://json-schema.org/keyword/format"][schemaLocation]) {
-        const keyword = await getSchema(schemaLocation);
-        errors.push({
-          message: localization.getFormatErrorMessage(Schema.value(keyword)),
-          instanceLocation: Instance.uri(instance),
-          schemaLocation: schemaLocation
-        });
+  const formats = [
+    "https://json-schema.org/keyword/draft-2020-12/format",
+    "https://json-schema.org/keyword/draft-2019-09/format",
+    "https://json-schema.org/keyword/draft-07/format",
+    "https://json-schema.org/keyword/draft-06/format",
+    "https://json-schema.org/keyword/draft-04/format",
+  ];
+
+  for (const formatKeyword of formats) {
+    if (!normalizedErrors[formatKeyword]) {
+      continue;
+    }
+
+    for (const schemaLocation in normalizedErrors[formatKeyword]) {
+      const valid = normalizedErrors[formatKeyword][schemaLocation];
+      if (valid) {
+        continue;
       }
+
+      const keyword = await getSchema(schemaLocation);
+
+      errors.push({
+        message: localization.getFormatErrorMessage(Schema.value(keyword)),
+        instanceLocation: Instance.uri(instance),
+        schemaLocation
+      });
     }
   }
 
