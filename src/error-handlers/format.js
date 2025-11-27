@@ -16,7 +16,7 @@ const format = async (normalizedErrors, instance, localization) => {
     "https://json-schema.org/keyword/draft-2019-09/format",
     "https://json-schema.org/keyword/draft-07/format",
     "https://json-schema.org/keyword/draft-06/format",
-    "https://json-schema.org/keyword/draft-04/format",
+    "https://json-schema.org/keyword/draft-04/format"
   ];
 
   for (const formatKeyword of formats) {

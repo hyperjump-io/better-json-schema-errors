@@ -4,9 +4,9 @@
 
 /** @type KeywordHandler */
 const format = {
-appliesTo() {
-        return true;
-    }
+  appliesTo() {
+    return true;
+  }
 };
 
 export default format;

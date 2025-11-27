@@ -698,88 +698,87 @@ describe("Error messages", async () => {
   });
 
   test("format: email (draft-07)", async () => {
-  registerSchema({
-    $schema: "http://json-schema.org/draft-07/schema",
-    format: "email"
-  }, schemaUri);
+    registerSchema({
+      $schema: "http://json-schema.org/draft-07/schema",
+      format: "email"
+    }, schemaUri);
 
-  const instance = "not-an-email";
-  const output = {
-    valid: false,
-    errors: [
+    const instance = "not-an-email";
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/format",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+    expect(result.errors).to.eql([
       {
-        absoluteKeywordLocation: "https://example.com/main#/format",
-        instanceLocation: "#"
+        schemaLocation: "https://example.com/main#/format",
+        instanceLocation: "#",
+        message: localization.getFormatErrorMessage("email")
       }
-    ]
-  };
+    ]);
+  });
 
-  const result = await betterJsonSchemaErrors(output, schemaUri, instance);
-  expect(result.errors).to.eql([
-    {
-      schemaLocation: "https://example.com/main#/format",
-      instanceLocation: "#",
-      message: localization.getFormatErrorMessage("email")
-    }
-  ]);
-});
+  test("format: email (draft-06)", async () => {
+    registerSchema({
+      $schema: "http://json-schema.org/draft-06/schema",
+      format: "email"
+    }, schemaUri);
 
-test("format: email (draft-06)", async () => {
-  registerSchema({
-    $schema: "http://json-schema.org/draft-06/schema",
-    format: "email"
-  }, schemaUri);
+    const instance = "not-an-email";
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/format",
+          instanceLocation: "#"
+        }
+      ]
+    };
 
-  const instance = "not-an-email";
-  const output = {
-    valid: false,
-    errors: [
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+
+    expect(result.errors).to.eql([
       {
-        absoluteKeywordLocation: "https://example.com/main#/format",
-        instanceLocation: "#"
+        schemaLocation: "https://example.com/main#/format",
+        instanceLocation: "#",
+        message: localization.getFormatErrorMessage("email")
       }
-    ]
-  };
+    ]);
+  });
 
-  const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+  test("format: email (draft-04)", async () => {
+    registerSchema({
+      $schema: "http://json-schema.org/draft-04/schema",
+      format: "email"
+    }, schemaUri);
 
-  expect(result.errors).to.eql([
-    {
-      schemaLocation: "https://example.com/main#/format",
-      instanceLocation: "#",
-      message: localization.getFormatErrorMessage("email")
-    }
-  ]);
-});
+    const instance = "not-an-email";
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/format",
+          instanceLocation: "#"
+        }
+      ]
+    };
 
-test("format: email (draft-04)", async () => {
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
 
-  registerSchema({
-    $schema: "http://json-schema.org/draft-04/schema",
-    format: "email"
-  }, schemaUri);
-
-  const instance = "not-an-email";
-  const output = {
-    valid: false,
-    errors: [
+    expect(result.errors).to.eql([
       {
-        absoluteKeywordLocation: "https://example.com/main#/format",
-        instanceLocation: "#"
+        schemaLocation: "https://example.com/main#/format",
+        instanceLocation: "#",
+        message: localization.getFormatErrorMessage("email")
       }
-    ]
-  };
-
-  const result = await betterJsonSchemaErrors(output, schemaUri, instance);
-
-  expect(result.errors).to.eql([
-    {
-      schemaLocation: "https://example.com/main#/format",
-      instanceLocation: "#",
-      message: localization.getFormatErrorMessage("email")
-    }
-  ]);
-});
+    ]);
+  });
 
   test("pattern", async () => {
     registerSchema({
