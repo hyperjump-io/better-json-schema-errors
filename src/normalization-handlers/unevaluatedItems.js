@@ -2,8 +2,8 @@ import { evaluateSchema } from "../normalized-output.js";
 import * as Instance from "@hyperjump/json-schema/instance/experimental";
 
 /**
- * @import { EvaluationContext, KeywordHandler, NormalizedOutput } from "../index.d.ts"
  * @import { EvaluationPlugin } from "@hyperjump/json-schema/experimental"
+ * @import { EvaluationContext, KeywordHandler, NormalizedOutput } from "../index.d.ts"
  */
 
 /**
