@@ -1719,7 +1719,7 @@ describe("Error messages", async () => {
     ]);
   });
 
-  test.skip("allOf conflicting type", async () => {
+  test("allOf conflicting type", async () => {
     registerSchema({
       $schema: "https://json-schema.org/draft/2020-12/schema",
       allOf: [
