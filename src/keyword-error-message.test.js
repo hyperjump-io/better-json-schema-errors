@@ -1749,7 +1749,10 @@ describe("Error messages", async () => {
 
     expect(result.errors).to.eql([
       {
-        schemaLocation: "https://example.com/main#/allOf/0/type",
+        schemaLocation: [
+          "https://example.com/main#/allOf/0/type",
+          "https://example.com/main#/allOf/1/type"
+        ],
         instanceLocation: "#",
         message: localization.getConflictingTypeMessage()
       }

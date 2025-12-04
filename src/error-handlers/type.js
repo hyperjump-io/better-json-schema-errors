@@ -6,13 +6,15 @@ import * as Instance from "@hyperjump/json-schema/instance/experimental";
  * @import { ErrorHandler, ErrorObject } from "../index.d.ts"
  */
 
+const ALL_TYPES = ["null", "boolean", "number", "string", "array", "object", "integer"];
+
 /** @type ErrorHandler */
 const type = async (normalizedErrors, instance, localization) => {
   /** @type ErrorObject[] */
   const errors = [];
 
   if (normalizedErrors["https://json-schema.org/keyword/type"]) {
-    let allowedTypes = new Set(["null", "boolean", "number", "string", "array", "object", "integer"]);
+    let allowedTypes = new Set(ALL_TYPES);
     const failedTypeLocations = [];
 
     for (const schemaLocation in normalizedErrors["https://json-schema.org/keyword/type"]) {
@@ -27,7 +29,7 @@ const type = async (normalizedErrors, instance, localization) => {
       const types = Array.isArray(value) ? value : [value];
       /** @type {Set<string>} */
       const keywordTypes = new Set(types);
-      allowedTypes = allowedTypes.intersection(keywordTypes);
+      allowedTypes = intersectTypeSets(allowedTypes, keywordTypes);
     }
 
     if (allowedTypes.size === 0) {
@@ -35,22 +37,42 @@ const type = async (normalizedErrors, instance, localization) => {
         errors.push({
           message: localization.getConflictingTypeMessage(),
           instanceLocation: Instance.uri(instance),
-          schemaLocation: failedTypeLocations[0]
+          schemaLocation: failedTypeLocations
         });
       }
-    } else {
-      for (const schemaLocation of failedTypeLocations) {
-        const keyword = await getSchema(schemaLocation);
-        errors.push({
-          message: localization.getTypeErrorMessage(Schema.value(keyword), Instance.typeOf(instance)),
-          instanceLocation: Instance.uri(instance),
-          schemaLocation: schemaLocation
-        });
+    } else if (failedTypeLocations.length > 0) {
+      if (allowedTypes.has("number")) {
+        allowedTypes.delete("integer");
       }
+      errors.push({
+        message: localization.getTypeErrorMessage([...allowedTypes], Instance.typeOf(instance)),
+        instanceLocation: Instance.uri(instance),
+        schemaLocation: failedTypeLocations.length === 1 ? failedTypeLocations[0] : failedTypeLocations
+      });
     }
   }
 
   return errors;
+};
+
+/**
+ * @param {Set<string>} a
+ * @param {Set<string>} b
+ * @returns {Set<string>}
+ */
+const intersectTypeSets = (a, b) => {
+  /** @type {Set<string>} */
+  const intersection = new Set();
+  for (const type of a) {
+    if (b.has(type)) {
+      intersection.add(type);
+    } else if (type === "integer" && b.has("number")) {
+      intersection.add("integer");
+    } else if (type === "number" && b.has("integer")) {
+      intersection.add("integer");
+    }
+  }
+  return intersection;
 };
 
 export default type;
