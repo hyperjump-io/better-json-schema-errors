@@ -6,7 +6,7 @@ import * as Instance from "@hyperjump/json-schema/instance/experimental";
  * @import { ErrorHandler, ErrorObject } from "../index.d.ts"
  */
 
-const ALL_TYPES = ["null", "boolean", "number", "string", "array", "object", "integer"];
+const ALL_TYPES = new Set(["null", "boolean", "number", "string", "array", "object", "integer"]);
 
 /** @type ErrorHandler */
 const type = async (normalizedErrors, instance, localization) => {
@@ -29,21 +29,22 @@ const type = async (normalizedErrors, instance, localization) => {
       const types = Array.isArray(value) ? value : [value];
       /** @type {Set<string>} */
       const keywordTypes = new Set(types);
-      allowedTypes = intersectTypeSets(allowedTypes, keywordTypes);
+      if (keywordTypes.has("number")) {
+        keywordTypes.add("integer");
+      }
+      allowedTypes = allowedTypes.intersection(keywordTypes);
+    }
+    if (allowedTypes.has("number")) {
+      allowedTypes.delete("integer");
     }
 
     if (allowedTypes.size === 0) {
-      if (failedTypeLocations.length > 0) {
-        errors.push({
-          message: localization.getConflictingTypeMessage(),
-          instanceLocation: Instance.uri(instance),
-          schemaLocation: failedTypeLocations
-        });
-      }
+      errors.push({
+        message: localization.getConflictingTypeMessage(),
+        instanceLocation: Instance.uri(instance),
+        schemaLocation: failedTypeLocations
+      });
     } else if (failedTypeLocations.length > 0) {
-      if (allowedTypes.has("number")) {
-        allowedTypes.delete("integer");
-      }
       errors.push({
         message: localization.getTypeErrorMessage([...allowedTypes], Instance.typeOf(instance)),
         instanceLocation: Instance.uri(instance),
@@ -53,26 +54,6 @@ const type = async (normalizedErrors, instance, localization) => {
   }
 
   return errors;
-};
-
-/**
- * @param {Set<string>} a
- * @param {Set<string>} b
- * @returns {Set<string>}
- */
-const intersectTypeSets = (a, b) => {
-  /** @type {Set<string>} */
-  const intersection = new Set();
-  for (const type of a) {
-    if (b.has(type)) {
-      intersection.add(type);
-    } else if (type === "integer" && b.has("number")) {
-      intersection.add("integer");
-    } else if (type === "number" && b.has("integer")) {
-      intersection.add("integer");
-    }
-  }
-  return intersection;
 };
 
 export default type;
