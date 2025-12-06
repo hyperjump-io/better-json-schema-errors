@@ -1719,7 +1719,7 @@ describe("Error messages", async () => {
     ]);
   });
 
-  test.skip("allOf conflicting type", async () => {
+  test("allOf conflicting type", async () => {
     registerSchema({
       $schema: "https://json-schema.org/draft/2020-12/schema",
       allOf: [
@@ -1749,9 +1749,126 @@ describe("Error messages", async () => {
 
     expect(result.errors).to.eql([
       {
-        schemaLocation: "https://example.com/main#/allOf/0/type",
+        schemaLocation: [
+          "https://example.com/main#/allOf/0/type",
+          "https://example.com/main#/allOf/1/type"
+        ],
         instanceLocation: "#",
         message: localization.getConflictingTypeMessage()
+      }
+    ]);
+  });
+
+  test("can be a number and integer at the same time", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      allOf: [
+        { type: "number" },
+        { type: "integer" }
+      ]
+    }, schemaUri);
+
+    const instance = "foo";
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/allOf/0/type",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/allOf/1/type",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+
+    expect(result.errors).to.eql([
+      {
+        message: localization.getTypeErrorMessage("integer", "string"),
+        instanceLocation: "#",
+        schemaLocation: [
+          "https://example.com/main#/allOf/0/type",
+          "https://example.com/main#/allOf/1/type"
+        ]
+      }
+    ]);
+  });
+
+  test("can be a number and integer at the same time - pass", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      allOf: [
+        { type: "number" },
+        { type: "integer" }
+      ],
+      maximum: 5
+    }, schemaUri);
+
+    const instance = 15;
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/maximum",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+
+    expect(result.errors).to.eql([
+      {
+        message: localization.getNumberErrorMessage({ maximum: 5 }),
+        instanceLocation: "#",
+        schemaLocation: "https://example.com/main#/maximum"
+      }
+    ]);
+  });
+
+  test("there should be one type message per schema", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      allOf: [
+        { type: "number" },
+        { type: "number" }
+      ]
+    }, schemaUri);
+
+    const instance = "foo";
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/allOf/0/type",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/allOf/1/type",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+
+    expect(result.errors).to.eql([
+      {
+        message: localization.getTypeErrorMessage(["number"], "string"),
+        instanceLocation: "#",
+        schemaLocation: [
+          "https://example.com/main#/allOf/0/type",
+          "https://example.com/main#/allOf/1/type"
+        ]
       }
     ]);
   });
@@ -2260,5 +2377,118 @@ describe("Error messages", async () => {
       instanceLocation: "#",
       message: localization.getStringErrorMessage({ minLength: 3, maxLength: 5 })
     }]);
+  });
+  test("can be a number and integer at the same time", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      allOf: [
+        { type: "number" },
+        { type: "integer" }
+      ]
+    }, schemaUri);
+
+    const instance = "foo";
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/allOf/0/type",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/allOf/1/type",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+
+    expect(result.errors).to.eql([
+      {
+        message: localization.getTypeErrorMessage("integer", "string"),
+        instanceLocation: "#",
+        schemaLocation: [
+          "https://example.com/main#/allOf/0/type",
+          "https://example.com/main#/allOf/1/type"
+        ]
+      }
+    ]);
+  });
+
+  test("can be a number and integer at the same time - pass", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      allOf: [
+        { type: "number" },
+        { type: "integer" }
+      ],
+      maximum: 5
+    }, schemaUri);
+
+    const instance = 15;
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/maximum",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+
+    expect(result.errors).to.eql([
+      {
+        message: localization.getNumberErrorMessage({ maximum: 5 }),
+        instanceLocation: "#",
+        schemaLocation: "https://example.com/main#/maximum"
+      }
+    ]);
+  });
+
+  test("there should be one type message per schema", async () => {
+    registerSchema({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      allOf: [
+        { type: "number" },
+        { type: "number" }
+      ]
+    }, schemaUri);
+
+    const instance = "foo";
+
+    /** @type OutputFormat */
+    const output = {
+      valid: false,
+      errors: [
+        {
+          absoluteKeywordLocation: "https://example.com/main#/allOf/0/type",
+          instanceLocation: "#"
+        },
+        {
+          absoluteKeywordLocation: "https://example.com/main#/allOf/1/type",
+          instanceLocation: "#"
+        }
+      ]
+    };
+
+    const result = await betterJsonSchemaErrors(output, schemaUri, instance);
+
+    expect(result.errors).to.eql([
+      {
+        message: localization.getTypeErrorMessage(["number"], "string"),
+        instanceLocation: "#",
+        schemaLocation: [
+          "https://example.com/main#/allOf/0/type",
+          "https://example.com/main#/allOf/1/type"
+        ]
+      }
+    ]);
   });
 });
